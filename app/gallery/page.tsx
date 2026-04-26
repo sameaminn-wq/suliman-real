@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MapPin, Maximize, BedDouble, Bath, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 // تحديد نوع البيانات لضمان دقة الكود ومنع الثغرات المنطقية
 interface Property {
@@ -142,9 +143,12 @@ export default function GalleryPage() {
                     </div>
                   </div>
 
-                  <button className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all">
-                    تفاصيل العقار
-                  </button>
+                  <Link 
+  href={`/gallery/${prop.id}`} 
+  className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all inline-block text-center"
+>
+  تفاصيل العقار
+</Link>
                 </div>
               </div>
             ))}
