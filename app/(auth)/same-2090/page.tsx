@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // تأكد من المسار الصحيح
+import { supabase } from '@/lib/supabase'; 
 import { useRouter } from 'next/navigation';
 
-// تأكد من وجود كلمة default هنا
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,28 +14,36 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      alert('خطأ في الدخول: ' + error.message);
+      if (error) {
+        alert('خطأ في الدخول: ' + error.message);
+        setLoading(false);
+      } else {
+        // استخدام router لضمان سلاسة الانتقال وتحديث البيانات
+        router.push('/dashboard');
+        router.refresh(); 
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
       setLoading(false);
-    } else {
-      // بدلاً من router.push
-      window.location.href = '/dashboard'; 
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
       <div className="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-gray-200/50 w-full max-w-md border border-gray-100">
-        <h1 className="text-3xl font-bold text-center text-[#0F172A] mb-8">سليمان <span className="text-[#10B981]">للعقارات</span></h1>
+        <h1 className="text-3xl font-bold text-center text-[#0F172A] mb-8">
+          سليمان <span className="text-[#10B981]">للعقارات</span>
+        </h1>
         
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6 text-right" dir="rtl">
           <div>
-            <label className="block text-sm font-bold mb-2 mr-1">البريد الإلكتروني</label>
+            <label className="block text-sm font-bold mb-2 mr-1 text-gray-700">البريد الإلكتروني</label>
             <input 
               type="email" 
               className="w-full p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-[#10B981] outline-none transition-all text-right"
@@ -47,7 +54,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold mb-2 mr-1">كلمة المرور</label>
+            <label className="block text-sm font-bold mb-2 mr-1 text-gray-700">كلمة المرور</label>
             <input 
               type="password" 
               className="w-full p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-[#10B981] outline-none transition-all text-right"
@@ -60,7 +67,7 @@ export default function LoginPage() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-[#0F172A] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#1E293B] transition-all disabled:opacity-50"
+            className="w-full bg-[#0F172A] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#1E293B] transition-all disabled:opacity-50 shadow-lg shadow-gray-200"
           >
             {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
           </button>

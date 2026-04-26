@@ -1,165 +1,110 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import { supabase } from '@/lib/supabase';
-import { Building2, MapPin, ImageIcon, Loader2, Save } from 'lucide-react';
+import { DollarSign, Home, Users, TrendingUp, Building2, Clock } from 'lucide-react';
 
-export default function NewPropertyPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    location: '',
-    price: '',
-    area: '',
-    rooms: '',
-    bathrooms: '',
-    type: 'شقة',
-    description: '',
-    image_url: ''
-  });
+export default async function DashboardPage() {
+  const supabase = createServerComponentClient({ cookies });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return; // حماية ضد النقر المتعدد
+  // 1. الحماية: التأكد من وجود جلسة دخول (Session)
+  const { data: { session } } = await supabase.auth.getSession();
 
-    setLoading(true);
+  // إذا لم يكن مسجلاً، يتم طرده للرابط السري
+  if (!session) {
+    redirect('/same-2090');
+  }
 
-    try {
-      const { error } = await supabase
-        .from('properties')
-        .insert([
-          { 
-            ...formData,
-            price: parseFloat(formData.price) || 0,
-            area: parseFloat(formData.area) || 0,
-            rooms: parseInt(formData.rooms) || 0,
-            bathrooms: parseInt(formData.bathrooms) || 0,
-            created_at: new Date().toISOString(), // تأمين وقت الإنشاء
-          }
-        ]);
+  // 2. جلب بيانات حقيقية من قاعدة البيانات
+  // جلب إجمالي عدد العقارات
+  const { count: totalProperties } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true });
 
-      if (error) throw error;
+  // جلب آخر 3 عقارات مضافة لعرضها في الجدول
+  const { data: recentProperties } = await supabase
+    .from('properties')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(3);
 
-      alert('✅ تم إضافة العقار بنجاح!');
-      router.push('/dashboard/properties'); 
-      router.refresh(); // لتحديث البيانات فوراً
-    } catch (error: any) {
-      alert('❌ خطأ في النظام: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const stats = [
+    { title: 'إجمالي المبيعات (تقديري)', value: '45,200,000 ج.م', icon: DollarSign, color: 'bg-blue-500' },
+    { title: 'الوحدات المتاحة حالياً', value: totalProperties?.toString() || '0', icon: Home, color: 'bg-[#10B981]' },
+    { title: 'طلبات المعاينة', value: '12', icon: Users, color: 'bg-purple-500' },
+    { title: 'نسبة النمو', value: '+18%', icon: TrendingUp, color: 'bg-orange-500' },
+  ];
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* تأكد من أن الـ Sidebar يعكس الصلاحية الصحيحة، هنا استخدمنا ADMIN */}
+    <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
+      {/* القائمة الجانبية */}
       <Sidebar role="ADMIN" />
-      
-      <main className="mr-72 flex-1 p-10 text-right" dir="rtl">
-        <div className="max-w-4xl mx-auto">
-          <header className="mb-10 flex justify-between items-end">
-            <div>
-              <h1 className="text-3xl font-bold text-[#0F172A]">إضافة وحدة جديدة</h1>
-              <p className="text-gray-500 mt-2">أدخل تفاصيل العقار بدقة لتظهر بشكل جذاب في المعرض</p>
-            </div>
-            <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold">
-              لوحة التحكم الآمنة
-            </div>
-          </header>
 
-          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
-            
-            {/* عنوان العقار والموقع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">عنوان العقار</label>
-                <div className="relative">
-                  <Building2 className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="مثال: شقة دوبلكس بالتجمع"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  />
+      <main className="mr-72 flex-1 p-10">
+        {/* الهيدر */}
+        <header className="flex justify-between items-center mb-12">
+          <div>
+            <h1 className="text-3xl font-bold text-[#0F172A]">لوحة التحكم</h1>
+            <p className="text-gray-500 mt-1">مرحباً بك، سيد سليمان. إليك نظرة سريعة على أعمالك اليوم.</p>
+          </div>
+          <div className="flex items-center gap-4 bg-white p-2 pl-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="w-12 h-12 bg-[#10B981] rounded-xl flex items-center justify-center text-white font-bold text-xl">
+              S
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-[#0F172A]">سليمان العزومي</p>
+              <p className="text-xs text-[#10B981]">المدير التنفيذي</p>
+            </div>
+          </div>
+        </header>
+
+        {/* شبكة الإحصائيات */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((s, i) => (
+            <div key={i} className="bg-white p-7 rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+              <div className={`${s.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
+                <s.icon size={24} />
+              </div>
+              <p className="text-gray-400 text-sm font-medium">{s.title}</p>
+              <h3 className="text-2xl font-bold text-[#0F172A] mt-1">{s.value}</h3>
+            </div>
+          ))}
+        </div>
+
+        {/* عرض الوحدات الأخيرة المضافة */}
+        <div className="mt-12 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-xl font-bold text-[#0F172A] flex items-center gap-2">
+              <Building2 className="text-[#10B981]" />
+              أحدث الوحدات المضافة
+            </h2>
+            <button className="text-[#10B981] text-sm font-bold hover:underline">عرض الكل</button>
+          </div>
+
+          <div className="space-y-4">
+            {recentProperties?.map((prop) => (
+              <div key={prop.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shadow-sm">
+                    <img src={prop.image_url} alt={prop.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#0F172A]">{prop.title}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                      <Clock size={12} />
+                      <span>{new Date(prop.created_at).toLocaleDateString('ar-EG')}</span>
+                      <span>•</span>
+                      <span>{prop.location}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-[#10B981]">{Number(prop.price).toLocaleString()} ج.م</p>
+                  <p className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full inline-block mt-1">نشط في المعرض</p>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">الموقع</label>
-                <div className="relative">
-                  <MapPin className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="المدينة، الحي"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* الأرقام الحساسة */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[
-                { label: 'السعر (ج.م)', key: 'price' },
-                { label: 'المساحة (م²)', key: 'area' },
-                { label: 'غرف النوم', key: 'rooms' },
-                { label: 'الحمامات', key: 'bathrooms' }
-              ].map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">{item.label}</label>
-                  <input 
-                    required 
-                    type="number" 
-                    min="0"
-                    className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" 
-                    onChange={(e) => setFormData({...formData, [item.key]: e.target.value})} 
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* الصورة والنوع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">نوع العقار</label>
-                <select 
-                  className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
-                >
-                  <option>شقة</option>
-                  <option>فيلا</option>
-                  <option>دوبلكس</option>
-                  <option>محل تجاري</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">رابط الصورة (URL)</label>
-                <div className="relative">
-                  <ImageIcon className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    type="url" // تغيير النوع لـ url للتحقق التلقائي
-                    placeholder="https://..."
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button 
-              disabled={loading}
-              type="submit"
-              className="w-full bg-[#10B981] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#059669] disabled:bg-gray-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : <><Save size={20}/> نشر العقار الآن</>}
-            </button>
-          </form>
+            ))}
+          </div>
         </div>
       </main>
     </div>
