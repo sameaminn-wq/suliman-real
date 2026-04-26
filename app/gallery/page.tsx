@@ -1,185 +1,156 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import Sidebar from '@/components/Sidebar'; // تأكد من وجود المكون
-import { 
-  Building2, Plus, Search, Filter, 
-  MoreVertical, Edit3, Trash2, ExternalLink,
-  Loader2, CheckCircle2, Clock, AlertCircle 
-} from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import { MapPin, Maximize, BedDouble, Bath, AlertCircle } from 'lucide-react';
 
+// تحديد نوع البيانات لضمان دقة الكود ومنع الثغرات المنطقية
 interface Property {
   id: string;
   title: string;
   price: number;
   location: string;
-  status: 'available' | 'sold' | 'rented';
+  rooms: number;
+  bathrooms: number;
+  area: number;
+  image_url: string;
   type: string;
-  created_at: string;
 }
 
-export default function PropertiesStudio() {
+export default function GalleryPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // 1. جلب البيانات من Supabase
-  const fetchProperties = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProperties(data || []);
-    } catch (error: any) {
-      toast.error('حدث خطأ أثناء جلب العقارات: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+
+        // طلب البيانات من Supabase
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          // طباعة الخطأ التقني في الكونسول للمطور
+          console.error('--- Supabase Error Details ---');
+          console.error('Code:', error.code);
+          console.error('Message:', error.message);
+          console.error('Hint:', error.hint);
+          
+          setErrorMessage(`فشل جلب البيانات: ${error.message}`);
+        } else if (!data || data.length === 0) {
+          console.warn('الاستعلام نجح لكن الجدول فارغ أو الـ RLS يمنع القراءة.');
+          setProperties([]);
+        } else {
+          console.log('تم جلب البيانات بنجاح:', data);
+          setProperties(data);
+        }
+      } catch (err: any) {
+        console.error('Unexpected System Error:', err);
+        setErrorMessage('حدث خطأ غير متوقع في النظام.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProperties();
-  }, [fetchProperties]);
-
-  // 2. منطق الحذف السريع
-  const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا العقار نهائياً؟')) return;
-
-    const { error } = await supabase.from('properties').delete().eq('id', id);
-
-    if (error) {
-      toast.error('فشل الحذف: تأكد من صلاحياتك');
-    } else {
-      setProperties(prev => prev.filter(p => p.id !== id));
-      toast.success('تم حذف العقار بنجاح');
-    }
-  };
-
-  // تصفية البحث
-  const filteredProperties = properties.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  }, []);
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
-      <Toaster position="top-center" />
-      <Sidebar role="ADMIN" />
+    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+      {/* Header */}
+      <div className="bg-white py-16 border-b text-center">
+        <h1 className="text-4xl font-bold text-[#0F172A] mb-4">معرض العقارات الفاخرة</h1>
+        <p className="text-gray-500 max-w-2xl mx-auto px-6">
+          اكتشف مجموعة مختارة بعناية من أرقى الوحدات السكنية والتجارية
+        </p>
+      </div>
 
-      <main className="mr-72 flex-1 p-8">
-        {/* Header الداشبورد */}
-        <div className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="text-3xl font-black text-[#0F172A]">استوديو العقارات</h1>
-            <p className="text-gray-500 mt-1">إدارة المخزون العقاري وتحديث الحالات</p>
-          </div>
-          <button className="bg-[#10B981] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-[#0da06f] transition-all shadow-lg shadow-emerald-100">
-            <Plus size={20} />
-            إضافة عقار جديد
-          </button>
-        </div>
-
-        {/* أدوات التحكم (البحث والفلترة) */}
-        <div className="bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm mb-8 flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input 
-              type="text"
-              placeholder="ابحث بالعنوان أو الموقع..."
-              className="w-full pr-12 pl-4 py-3 bg-gray-50 rounded-xl outline-none focus:ring-2 focus:ring-[#10B981] transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="px-6 py-3 bg-gray-50 text-gray-600 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-100 transition-all">
-            <Filter size={18} />
-            تصفية
-          </button>
-        </div>
-
-        {/* عرض البيانات */}
-        {loading ? (
-          <div className="flex justify-center items-center py-40">
-            <Loader2 className="animate-spin text-[#10B981]" size={40} />
-          </div>
-        ) : (
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
-            <table className="w-full text-right border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-50 text-gray-400 text-sm">
-                  <th className="p-6 font-bold">العقار</th>
-                  <th className="p-6 font-bold">السعر</th>
-                  <th className="p-6 font-bold">الحالة</th>
-                  <th className="p-6 font-bold">تاريخ الإضافة</th>
-                  <th className="p-6 font-bold text-center">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredProperties.map((prop) => (
-                  <tr key={prop.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[#F1F5F9] rounded-xl flex items-center justify-center text-[#10B981]">
-                          <Building2 size={24} />
-                        </div>
-                        <div>
-                          <div className="font-black text-[#0F172A]">{prop.title}</div>
-                          <div className="text-xs text-gray-400">{prop.location}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6 font-bold text-[#0F172A]">
-                      {Number(prop.price).toLocaleString()} ج.م
-                    </td>
-                    <td className="p-6">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black ${
-                        prop.status === 'available' ? 'bg-emerald-100 text-emerald-600' :
-                        prop.status === 'sold' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
-                      }`}>
-                        {prop.status === 'available' && <CheckCircle2 size={12} />}
-                        {prop.status === 'sold' && <AlertCircle size={12} />}
-                        {prop.status === 'rented' && <Clock size={12} />}
-                        {prop.status === 'available' ? 'متاح' : prop.status === 'sold' ? 'مباع' : 'مؤجر'}
-                      </span>
-                    </td>
-                    <td className="p-6 text-sm text-gray-400 font-medium">
-                      {new Date(prop.created_at).toLocaleDateString('ar-EG')}
-                    </td>
-                    <td className="p-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <button className="p-2.5 text-gray-400 hover:text-[#10B981] hover:bg-emerald-50 rounded-lg transition-all">
-                          <Edit3 size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(prop.id)}
-                          className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                        <button className="p-2.5 text-gray-400 hover:text-[#0F172A] hover:bg-gray-100 rounded-lg transition-all">
-                          <ExternalLink size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {filteredProperties.length === 0 && (
-              <div className="text-center py-20 text-gray-400 font-bold">
-                لا توجد عقارات تطابق بحثك حالياً.
-              </div>
-            )}
+      <div className="max-w-7xl mx-auto px-6 mt-12">
+        {/* حالة التحميل */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-[#10B981] font-bold">جاري فحص قاعدة البيانات...</p>
           </div>
         )}
-      </main>
+
+        {/* حالة وجود خطأ */}
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl flex items-center gap-4 mb-8">
+            <AlertCircle className="shrink-0" />
+            <div>
+              <p className="font-bold">تنبيه تقني:</p>
+              <p className="text-sm">{errorMessage}</p>
+              <p className="text-xs mt-2 opacity-70">افتح Console المتصفح (F12) لمزيد من التفاصيل.</p>
+            </div>
+          </div>
+        )}
+
+        {/* حالة عدم وجود بيانات */}
+        {!loading && !errorMessage && properties.length === 0 && (
+          <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-200">
+            <p className="text-gray-400">لا توجد عقارات متاحة حالياً أو لا تملك صلاحية الوصول.</p>
+          </div>
+        )}
+
+        {/* عرض البيانات */}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {properties.map((prop) => (
+              <div key={prop.id} className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+                <div className="relative h-64 bg-gray-200">
+                  <img 
+                    src={prop.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
+                    alt={prop.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 right-4 bg-[#10B981] text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
+                    {prop.type}
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-bold text-[#0F172A] leading-tight">{prop.title}</h3>
+                    <div className="text-[#10B981] font-bold text-lg">
+                      {Number(prop.price).toLocaleString()} <span className="text-xs">ج.م</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-gray-400 text-sm mb-6">
+                    <MapPin size={14} />
+                    {prop.location}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 py-4 border-t border-gray-50">
+                    <div className="flex flex-col items-center gap-1 text-gray-500">
+                      <BedDouble size={18} className="text-[#10B981]" />
+                      <span className="text-xs font-bold">{prop.rooms} غرف</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-gray-500 border-x border-gray-50">
+                      <Bath size={18} className="text-[#10B981]" />
+                      <span className="text-xs font-bold">{prop.bathrooms} حمام</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-gray-500">
+                      <Maximize size={18} className="text-[#10B981]" />
+                      <span className="text-xs font-bold">{prop.area} م²</span>
+                    </div>
+                  </div>
+
+                  <button className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all">
+                    تفاصيل العقار
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
