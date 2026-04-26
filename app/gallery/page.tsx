@@ -2,22 +2,62 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Home, MapPin, Maximize, BedDouble, Bath, Search } from 'lucide-react';
+import { MapPin, Maximize, BedDouble, Bath, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+
+// تحديد نوع البيانات لضمان دقة الكود ومنع الثغرات المنطقية
+interface Property {
+  id: string;
+  title: string;
+  price: number;
+  location: string;
+  rooms: number;
+  bathrooms: number;
+  area: number;
+  image_url: string;
+  type: string;
+}
 
 export default function GalleryPage() {
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProperties = async () => {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (!error) setProperties(data);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+
+        // طلب البيانات من Supabase
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          // طباعة الخطأ التقني في الكونسول للمطور
+          console.error('--- Supabase Error Details ---');
+          console.error('Code:', error.code);
+          console.error('Message:', error.message);
+          console.error('Hint:', error.hint);
+          
+          setErrorMessage(`فشل جلب البيانات: ${error.message}`);
+        } else if (!data || data.length === 0) {
+          console.warn('الاستعلام نجح لكن الجدول فارغ أو الـ RLS يمنع القراءة.');
+          setProperties([]);
+        } else {
+          console.log('تم جلب البيانات بنجاح:', data);
+          setProperties(data);
+        }
+      } catch (err: any) {
+        console.error('Unexpected System Error:', err);
+        setErrorMessage('حدث خطأ غير متوقع في النظام.');
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchProperties();
   }, []);
 
@@ -27,18 +67,43 @@ export default function GalleryPage() {
       <div className="bg-white py-16 border-b text-center">
         <h1 className="text-4xl font-bold text-[#0F172A] mb-4">معرض العقارات الفاخرة</h1>
         <p className="text-gray-500 max-w-2xl mx-auto px-6">
-          اكتشف مجموعة مختارة بعناية من أرقى الوحدات السكنية والتجارية التي تناسب تطلعاتك
+          اكتشف مجموعة مختارة بعناية من أرقى الوحدات السكنية والتجارية
         </p>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 mt-12">
-        {loading ? (
-          <div className="text-center py-20 text-[#10B981] font-bold animate-pulse">جاري تحميل الوحدات...</div>
-        ) : (
+        {/* حالة التحميل */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-[#10B981] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-[#10B981] font-bold">جاري فحص قاعدة البيانات...</p>
+          </div>
+        )}
+
+        {/* حالة وجود خطأ */}
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl flex items-center gap-4 mb-8">
+            <AlertCircle className="shrink-0" />
+            <div>
+              <p className="font-bold">تنبيه تقني:</p>
+              <p className="text-sm">{errorMessage}</p>
+              <p className="text-xs mt-2 opacity-70">افتح Console المتصفح (F12) لمزيد من التفاصيل.</p>
+            </div>
+          </div>
+        )}
+
+        {/* حالة عدم وجود بيانات */}
+        {!loading && !errorMessage && properties.length === 0 && (
+          <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-200">
+            <p className="text-gray-400">لا توجد عقارات متاحة حالياً أو لا تملك صلاحية الوصول.</p>
+          </div>
+        )}
+
+        {/* عرض البيانات */}
+        {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {properties.map((prop) => (
               <div key={prop.id} className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                {/* Image Placeholder or Real Image */}
                 <div className="relative h-64 bg-gray-200">
                   <img 
                     src={prop.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
@@ -78,9 +143,12 @@ export default function GalleryPage() {
                     </div>
                   </div>
 
-                  <button className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all">
-                    تفاصيل العقار
-                  </button>
+                  <Link 
+  href={`/gallery/${prop.id}`} 
+  className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all inline-block text-center"
+>
+  تفاصيل العقار
+</Link>
                 </div>
               </div>
             ))}
