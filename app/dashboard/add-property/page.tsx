@@ -1,165 +1,96 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Building2, MapPin, ImageIcon, Loader2, Save } from 'lucide-react';
+import Sidebar from '@/components/Sidebar';
+import { Trash2, Edit, ExternalLink, Loader2, Plus } from 'lucide-react';
+import Link from 'next/link';
 
-export default function NewPropertyPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    location: '',
-    price: '',
-    area: '',
-    rooms: '',
-    bathrooms: '',
-    type: 'شقة',
-    description: '',
-    image_url: ''
-  });
+export default function PropertiesManagement() {
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return; // حماية ضد النقر المتعدد
+  useEffect(() => {
+    fetchProperties();
+  }, []);
 
+  const fetchProperties = async () => {
     setLoading(true);
+    const { data, error } = await supabase
+      .from('properties')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error) setProperties(data || []);
+    setLoading(false);
+  };
 
-    try {
-      const { error } = await supabase
-        .from('properties')
-        .insert([
-          { 
-            ...formData,
-            price: parseFloat(formData.price) || 0,
-            area: parseFloat(formData.area) || 0,
-            rooms: parseInt(formData.rooms) || 0,
-            bathrooms: parseInt(formData.bathrooms) || 0,
-            created_at: new Date().toISOString(), // تأمين وقت الإنشاء
-          }
-        ]);
-
-      if (error) throw error;
-
-      alert('✅ تم إضافة العقار بنجاح!');
-      router.push('/dashboard/properties'); 
-      router.refresh(); // لتحديث البيانات فوراً
-    } catch (error: any) {
-      alert('❌ خطأ في النظام: ' + error.message);
-    } finally {
-      setLoading(false);
+  const handleDelete = async (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا العقار نهائياً؟')) {
+      const { error } = await supabase.from('properties').delete().eq('id', id);
+      if (error) alert('خطأ في الحذف');
+      else fetchProperties(); // تحديث القائمة
     }
   };
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* تأكد من أن الـ Sidebar يعكس الصلاحية الصحيحة، هنا استخدمنا ADMIN */}
       <Sidebar role="ADMIN" />
-      
       <main className="mr-72 flex-1 p-10 text-right" dir="rtl">
-        <div className="max-w-4xl mx-auto">
-          <header className="mb-10 flex justify-between items-end">
-            <div>
-              <h1 className="text-3xl font-bold text-[#0F172A]">إضافة وحدة جديدة</h1>
-              <p className="text-gray-500 mt-2">أدخل تفاصيل العقار بدقة لتظهر بشكل جذاب في المعرض</p>
-            </div>
-            <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold">
-              لوحة التحكم الآمنة
-            </div>
-          </header>
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-[#0F172A]">إدارة الوحدات</h1>
+            <p className="text-gray-500">تحكم في العقارات المعروضة في المعرض العام</p>
+          </div>
+          <Link href="/dashboard/properties/new" className="flex items-center gap-2 bg-[#10B981] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#059669] transition-all">
+            <Plus size={20} />
+            إضافة عقار جديد
+          </Link>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
-            
-            {/* عنوان العقار والموقع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">عنوان العقار</label>
-                <div className="relative">
-                  <Building2 className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="مثال: شقة دوبلكس بالتجمع"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">الموقع</label>
-                <div className="relative">
-                  <MapPin className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="المدينة، الحي"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* الأرقام الحساسة */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[
-                { label: 'السعر (ج.م)', key: 'price' },
-                { label: 'المساحة (م²)', key: 'area' },
-                { label: 'غرف النوم', key: 'rooms' },
-                { label: 'الحمامات', key: 'bathrooms' }
-              ].map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">{item.label}</label>
-                  <input 
-                    required 
-                    type="number" 
-                    min="0"
-                    className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" 
-                    onChange={(e) => setFormData({...formData, [item.key]: e.target.value})} 
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* الصورة والنوع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">نوع العقار</label>
-                <select 
-                  className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
-                >
-                  <option>شقة</option>
-                  <option>فيلا</option>
-                  <option>دوبلكس</option>
-                  <option>محل تجاري</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">رابط الصورة (URL)</label>
-                <div className="relative">
-                  <ImageIcon className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    type="url" // تغيير النوع لـ url للتحقق التلقائي
-                    placeholder="https://..."
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button 
-              disabled={loading}
-              type="submit"
-              className="w-full bg-[#10B981] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#059669] disabled:bg-gray-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : <><Save size={20}/> نشر العقار الآن</>}
-            </button>
-          </form>
+        <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-[#10B981]" size={40} /></div>
+          ) : (
+            <table className="w-full text-right">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="p-6 text-gray-600 font-bold">العقار</th>
+                  <th className="p-6 text-gray-600 font-bold">الموقع</th>
+                  <th className="p-6 text-gray-600 font-bold">السعر</th>
+                  <th className="p-6 text-gray-600 font-bold">الحالة</th>
+                  <th className="p-6 text-gray-600 font-bold text-left">العمليات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {properties.map((prop) => (
+                  <tr key={prop.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="p-6">
+                      <div className="flex items-center gap-4">
+                        <img src={prop.image_url} className="w-12 h-12 rounded-xl object-cover border border-gray-100" />
+                        <span className="font-bold text-[#0F172A]">{prop.title}</span>
+                      </div>
+                    </td>
+                    <td className="p-6 text-gray-500 text-sm">{prop.location}</td>
+                    <td className="p-6 font-bold text-[#10B981]">{Number(prop.price).toLocaleString()} ج.م</td>
+                    <td className="p-6">
+                      <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">نشط</span>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => handleDelete(prop.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                        <Link href={`/gallery/${prop.id}`} target="_blank" className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                          <ExternalLink size={18} />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </main>
     </div>
