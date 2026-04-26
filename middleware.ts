@@ -26,18 +26,25 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // جلب الجلسة الحالية للتأكد من هوية المستخدم
   const { data: { session } } = await supabase.auth.getSession();
 
-  // الحماية الذكية:
-  // إذا حاول شخص دخول لوحة التحكم وهو غير مسجل، سنرسله إلى البوابة السرية الجديدة
+  const secretPath = '/same-2090';
+
+  // 1. حماية لوحة التحكم: إذا حاول شخص دخول /dashboard وهو غير مسجل
   if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/same-2029', request.url));
+    return NextResponse.redirect(new URL(secretPath, request.url));
+  }
+
+  // 2. حماية صفحة الإدارة: إذا حاول شخص دخول /admin وهو غير مسجل
+  if (!session && request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL(secretPath, request.url));
   }
 
   return response;
 }
 
 export const config = {
-  // يراقب لوحة التحكم وأي محاولة دخول للإدارة
+  // المسارات التي يراقبها الحارس (Middleware)
   matcher: ['/dashboard/:path*', '/admin/:path*'],
 };
