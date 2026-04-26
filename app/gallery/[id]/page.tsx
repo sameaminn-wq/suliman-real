@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
   MapPin, Maximize, BedDouble, Bath, 
   CheckCircle2, MessageCircle, Phone, 
-  Loader2, ArrowRight, Eye 
+  Loader2, ArrowRight, Eye, Share2, Heart,
+  Info
 } from 'lucide-react';
 import Link from 'next/link';
+import toast, { Toaster } from 'react-hot-toast';
 
-// تعريف النوع لضمان سلامة البيانات
 interface Property {
   id: string;
   title: string;
@@ -30,40 +31,58 @@ export default function PropertyDetailsPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPropertyData = async () => {
-      try {
-        // 1. جلب بيانات العقار
-        const { data, error } = await supabase
-          .from('properties')
-          .select('*')
-          .eq('id', id)
-          .single();
-        
-        if (error) throw error;
-        setProperty(data);
+  const fetchPropertyData = useCallback(async () => {
+    if (!id) return;
+    
+    try {
+      // جلب البيانات الأساسية
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      setProperty(data);
 
-        // 2. تحديث عدد المشاهدات بشكل منفصل ومنظم
-        await supabase
-          .from('properties')
-          .update({ views: (data.views || 0) + 1 })
-          .eq('id', id);
+      // تحديث المشاهدات بشكل "صامت" في الخلفية لضمان سرعة الاستجابة
+      supabase.rpc('increment_views', { property_id: id }).then(({ error }) => {
+        if (error) console.error('View Update Failed:', error);
+      });
 
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) fetchPropertyData();
+    } catch (error: any) {
+      console.error('Error:', error.message);
+      toast.error('تعذر تحميل بيانات الوحدة');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchPropertyData();
+  }, [fetchPropertyData]);
+
+  // دالة لمشاركة العقار
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: property?.title,
+        url: window.location.href,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('تم نسخ الرابط لمشاركته');
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <Loader2 className="w-10 h-10 text-[#10B981] animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">جاري تحضير عرض الوحدة...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-20 h-20 border-4 border-[#10B981]/20 border-t-[#10B981] rounded-full animate-spin"></div>
+          <Loader2 className="w-8 h-8 text-[#10B981] animate-pulse" />
+        </div>
+        <p className="mt-8 text-gray-500 font-bold tracking-widest animate-pulse">جاري تحضير تجربة العرض...</p>
       </div>
     );
   }
@@ -71,9 +90,13 @@ export default function PropertyDetailsPage() {
   if (!property) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">عذراً، لم يتم العثور على العقار</h2>
-        <Link href="/gallery" className="text-[#10B981] font-bold flex items-center gap-2 hover:underline">
-          <ArrowRight size={20} /> العودة للمعرض
+        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+          <Info className="text-red-500 w-12 h-12" />
+        </div>
+        <h2 className="text-3xl font-black text-[#0F172A] mb-4">عذراً، لم يتم العثور على العقار</h2>
+        <p className="text-gray-400 mb-8 max-w-sm">ربما تم حذف العقار أو انتقل إلى رابط جديد.</p>
+        <Link href="/gallery" className="bg-[#0F172A] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-[#1E293B] transition-all shadow-xl shadow-gray-200">
+          <ArrowRight size={20} /> العودة لمعرض العقارات
         </Link>
       </div>
     );
@@ -81,111 +104,121 @@ export default function PropertyDetailsPage() {
 
   return (
     <div className="min-h-screen bg-white pb-20 font-sans" dir="rtl">
-      {/* الهيدر التفاعلي (Hero Section) */}
-      <div className="h-[70vh] w-full relative overflow-hidden">
+      <Toaster position="top-center" />
+      
+      {/* Hero Section المطور */}
+      <div className="h-[75vh] w-full relative overflow-hidden group">
         <img 
           src={property.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
-          className="w-full h-full object-cover transform scale-105"
+          className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110"
           alt={property.title}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-transparent to-black/20"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-[#0F172A]/20 to-black/40"></div>
         
-        <div className="absolute bottom-12 right-12 left-12 text-white">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="bg-[#10B981] px-5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-lg">
+        {/* أزرار سريعة في الزاوية */}
+        <div className="absolute top-8 left-8 flex gap-3">
+          <button onClick={handleShare} className="p-4 bg-white/10 backdrop-blur-md text-white rounded-2xl hover:bg-white/20 transition-all border border-white/10">
+            <Share2 size={20} />
+          </button>
+          <button className="p-4 bg-white/10 backdrop-blur-md text-white rounded-2xl hover:bg-red-500 hover:text-white transition-all border border-white/10">
+            <Heart size={20} />
+          </button>
+        </div>
+
+        <div className="absolute bottom-16 right-10 left-10 text-white">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="bg-[#10B981] px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20">
               {property.type}
             </span>
-            <span className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2">
-              <Eye size={14} /> {property.views || 0} مشاهدة
+            <span className="bg-white/10 backdrop-blur-md px-5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border border-white/5">
+              <Eye size={16} className="text-[#10B981]" /> {property.views || 0} مشاهدة حقيقية
             </span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight max-w-4xl">
+          <h1 className="text-4xl md:text-7xl font-black mb-6 leading-[1.1] max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
             {property.title}
           </h1>
-          <div className="flex items-center gap-2 text-white/80 text-lg">
-            <MapPin size={20} className="text-[#10B981]" />
+          <div className="flex items-center gap-3 text-white/90 text-xl font-medium">
+            <div className="w-10 h-10 bg-[#10B981] rounded-xl flex items-center justify-center">
+              <MapPin size={22} className="text-white" />
+            </div>
             {property.location}
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-16 mt-16">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-16 mt-20">
         {/* المحتوى الرئيسي */}
-        <div className="lg:col-span-2">
-          <section className="mb-12">
-            <h2 className="text-2xl font-black text-[#0F172A] mb-6 flex items-center gap-3">
-              <div className="w-2 h-8 bg-[#10B981] rounded-full"></div>
-              تفاصيل العقار
+        <div className="lg:col-span-2 space-y-16">
+          <section>
+            <h2 className="text-3xl font-black text-[#0F172A] mb-8 flex items-center gap-4">
+              <span className="w-3 h-10 bg-[#10B981] rounded-full inline-block"></span>
+              نظرة عامة على العقار
             </h2>
-            <p className="text-gray-600 leading-[2] text-lg text-justify whitespace-pre-line">
-              {property.description || 'وصف العقار غير متوفر حالياً. تواصل معنا للحصول على كامل المعلومات الفنية والمميزات.'}
-            </p>
+            <div className="bg-[#F8FAFC] p-10 rounded-[3rem] border border-gray-50 leading-[2.2] text-gray-600 text-lg whitespace-pre-line shadow-inner">
+              {property.description}
+            </div>
           </section>
 
-          {/* شبكة المواصفات */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50/50 p-10 rounded-[3rem] border border-gray-100 shadow-sm">
-            <div className="text-center group">
-              <Maximize className="mx-auto text-[#10B981] mb-3 group-hover:scale-110 transition-transform" size={28} />
-              <p className="text-gray-400 text-xs mb-1">المساحة الكلية</p>
-              <p className="font-black text-xl text-[#0F172A]">{property.area} <span className="text-sm font-normal">م²</span></p>
+          {/* شبكة المواصفات المحسنة */}
+          <section>
+            <h2 className="text-2xl font-black text-[#0F172A] mb-8">المواصفات الفنية</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { icon: <Maximize size={32} />, label: 'المساحة', value: `${property.area} م²` },
+                { icon: <BedDouble size={32} />, label: 'الغرف', value: property.rooms },
+                { icon: <Bath size={32} />, label: 'الحمامات', value: property.bathrooms },
+                { icon: <div className="text-[#10B981] font-black text-2xl tracking-tighter">L.E</div>, label: 'السعر', value: Number(property.price).toLocaleString() }
+              ].map((item, idx) => (
+                <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center group">
+                  <div className="text-[#10B981] mb-4 flex justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
+                  <p className="text-gray-400 text-xs font-bold mb-1 uppercase tracking-widest">{item.label}</p>
+                  <p className="font-black text-2xl text-[#0F172A]">{item.value}</p>
+                </div>
+              ))}
             </div>
-            <div className="text-center border-r border-gray-200/50 group">
-              <BedDouble className="mx-auto text-[#10B981] mb-3 group-hover:scale-110 transition-transform" size={28} />
-              <p className="text-gray-400 text-xs mb-1">عدد الغرف</p>
-              <p className="font-black text-xl text-[#0F172A]">{property.rooms}</p>
-            </div>
-            <div className="text-center border-r border-gray-200/50 group">
-              <Bath className="mx-auto text-[#10B981] mb-3 group-hover:scale-110 transition-transform" size={28} />
-              <p className="text-gray-400 text-xs mb-1">حمامات</p>
-              <p className="font-black text-xl text-[#0F172A]">{property.bathrooms}</p>
-            </div>
-            <div className="text-center border-r border-gray-200/50 group">
-              <div className="text-[#10B981] text-2xl font-black mb-3">L.E</div>
-              <p className="text-gray-400 text-xs mb-1">السعر المطلوب</p>
-              <p className="font-black text-xl text-[#10B981]">
-                {Number(property.price).toLocaleString()}
-              </p>
-            </div>
-          </div>
+          </section>
         </div>
 
-        {/* كارت التواصل الذكي */}
+        {/* كارت التواصل الذكي (Sticky) */}
         <div className="lg:col-span-1">
-          <div className="bg-[#0F172A] p-10 rounded-[3rem] sticky top-10 shadow-2xl shadow-[#0F172A]/20 transform hover:-translate-y-1 transition-all duration-300">
-            <h3 className="text-2xl font-bold text-white mb-2 text-center">مهتم بالمعاينة؟</h3>
-            <p className="text-gray-400 text-center text-sm mb-10">سليمان وفريقه متاحون للإجابة على استفساراتك فوراً</p>
+          <div className="bg-[#0F172A] p-12 rounded-[3.5rem] sticky top-10 shadow-2xl shadow-emerald-900/20 overflow-hidden group">
+            {/* زخرفة خلفية */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#10B981] opacity-5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:opacity-10 transition-opacity"></div>
             
-            <div className="space-y-4">
+            <h3 className="text-3xl font-black text-white mb-4 text-center leading-tight">احجز موعد المعاينة</h3>
+            <p className="text-gray-400 text-center text-sm mb-12 leading-relaxed">فريقنا جاهز لمرافقتك في جولة خاصة لاستكشاف هذا العقار على أرض الواقع.</p>
+            
+            <div className="space-y-5 relative z-10">
               <a 
                 href={`https://wa.me/+201156383133?text=مرحباً، أريد الاستفسار عن عقار: ${property.title}`}
                 target="_blank"
-                className="w-full flex items-center justify-center gap-3 bg-[#10B981] text-white py-5 rounded-[1.5rem] font-bold hover:bg-[#0da06f] transition-all"
+                className="w-full flex items-center justify-center gap-4 bg-[#10B981] text-white py-6 rounded-[2rem] font-black text-lg hover:bg-[#0da06f] transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-500/20"
               >
-                <MessageCircle size={22} />
-                تحدث معنا (واتساب)
+                <MessageCircle size={26} />
+                واتساب مباشر
               </a>
               
               <a 
                 href="tel:+201156383133"
-                className="w-full flex items-center justify-center gap-3 bg-white/5 text-white py-5 rounded-[1.5rem] font-bold hover:bg-white/10 transition-all border border-white/10"
+                className="w-full flex items-center justify-center gap-4 bg-white/5 text-white py-6 rounded-[2rem] font-black text-lg hover:bg-white/10 transition-all border border-white/10"
               >
-                <Phone size={22} />
-                اتصال هاتفي سريع
+                <Phone size={26} />
+                اتصال سريع
               </a>
             </div>
 
-            <div className="mt-10 space-y-4">
-              <div className="flex items-center gap-4 text-sm text-gray-300">
-                <div className="w-6 h-6 rounded-full bg-[#10B981]/20 flex items-center justify-center shadow-inner">
-                  <CheckCircle2 size={14} className="text-[#10B981]" />
+            <div className="mt-12 pt-10 border-t border-white/5 space-y-5">
+              <div className="flex items-center gap-5 text-gray-300 group/item">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/item:bg-emerald-500/20 transition-colors">
+                  <CheckCircle2 size={18} className="text-[#10B981]" />
                 </div>
-                متاح للمعاينة طوال الأسبوع
+                <span className="font-bold text-sm">متاح للمعاينة الفورية</span>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-300">
-                <div className="w-6 h-6 rounded-full bg-[#10B981]/20 flex items-center justify-center shadow-inner">
-                  <CheckCircle2 size={14} className="text-[#10B981]" />
+              <div className="flex items-center gap-5 text-gray-300 group/item">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/item:bg-emerald-500/20 transition-colors">
+                  <CheckCircle2 size={18} className="text-[#10B981]" />
                 </div>
-                تسجيل ملكية مباشر
+                <span className="font-bold text-sm">أوراق ملكية موثقة 100%</span>
               </div>
             </div>
           </div>
