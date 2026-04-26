@@ -2,8 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // إنشاء استجابة أولية
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: {
+      headers: request.headers,
+    },
   });
 
   const supabase = createServerClient(
@@ -15,28 +18,57 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
+          // تحديث الكوكيز في الطلب والاستجابة معاً لضمان التزامن
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
           response.cookies.set({ name, value: '', ...options });
         },
       },
     }
   );
 
-  // السطر السحري: getUser يقوم بتحديث الجلسة إجبارياً في الكوكيز
+  // التحقق من الجلسة (getUser هي الطريقة الآمنة برمجياً)
   const { data: { user } } = await supabase.auth.getUser();
 
-  const secretPath = '/same-2090';
+  const loginPath = '/same-2090';
+  const isDashboardPath = request.nextUrl.pathname.startsWith('/dashboard');
+  const isAdminPath = request.nextUrl.pathname.startsWith('/admin');
 
-  // إذا لم يجد المستخدم ويحاول دخول لوحة التحكم
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL(secretPath, request.url));
+  // 1. إذا كان المستخدم غير مسجل ويحاول دخول لوحة التحكم -> توجيه لصفحة الدخول
+  if (!user && (isDashboardPath || isAdminPath)) {
+    const url = request.nextUrl.clone();
+    url.pathname = loginPath;
+    return NextResponse.redirect(url);
+  }
+
+  // 2. إذا كان المستخدم مسجل ويحاول دخول صفحة الدخول -> توجيه للداشبورد (منع تكرار الدخول)
+  if (user && request.nextUrl.pathname === loginPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
   return response;
 }
 
+// تحديد المسارات التي يراقبها الـ Middleware
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  matcher: [
+    '/dashboard/:path*', 
+    '/admin/:path*', 
+    '/same-2090' // مراقبة صفحة الدخول أيضاً
+  ],
 };

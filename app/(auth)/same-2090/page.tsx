@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase'; 
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast'; // استيراد المكتبة
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    // التحقق المبدئي
     if (!email || !password) {
       toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       setLoading(false);
@@ -23,27 +22,30 @@ export default function LoginPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(), // تنظيف البريد من المسافات
+      const { error, data } = await supabase.auth.signInWithPassword({
+        email: email.trim(), 
         password: password,
       });
 
       if (error) {
-        // رسائل خطأ ذكية بناءً على نوع الخطأ
         if (error.message.includes('Invalid login credentials')) {
-          toast.error('خطأ في البيانات: تأكد من البريد أو كلمة المرور');
+          toast.error('بيانات الدخول غير صحيحة، يرجى التحقق');
         } else {
           toast.error(error.message);
         }
         setLoading(false);
       } else {
-        toast.success('تم تسجيل الدخول بنجاح! جاري التوجيه...');
+        // [إصلاح رقم 2]: تحديث الجلسة فوراً لضمان قراءة الكوكيز من قبل الـ Middleware
+        toast.success('تم التحقق بنجاح! جاري تحضير اللوحة...');
         
-        // تأخير بسيط ليتمكن المستخدم من رؤية رسالة النجاح
+        // تحديث الراوتر داخلياً
+        router.refresh(); 
+
+        // [إصلاح رقم 3]: استخدام التوجيه القسري (Hard Redirect)
+        // هذا يضمن أن المتصفح يرسل الكوكيز الجديدة للـ Middleware بشكل سليم
         setTimeout(() => {
-          router.push('/dashboard');
-          router.refresh(); 
-        }, 1000);
+          window.location.replace('/dashboard');
+        }, 800);
       }
     } catch (err) {
       toast.error('حدث خطأ غير متوقع في الاتصال');
@@ -53,13 +55,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-      {/* مكون الإشعارات يجب أن يكون موجوداً في الصفحة */}
       <Toaster position="top-center" reverseOrder={false} />
 
       <div className="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-gray-200/50 w-full max-w-md border border-gray-100">
-        <h1 className="text-3xl font-black text-center text-[#0F172A] mb-8">
-          سليمان <span className="text-[#10B981]">للعقارات</span>
-        </h1>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-black text-[#0F172A]">
+            سليمان <span className="text-[#10B981]">للعقارات</span>
+          </h1>
+          <p className="text-gray-400 text-sm mt-2 font-medium">بوابة الإدارة الذكية</p>
+        </div>
         
         <form onSubmit={handleLogin} className="space-y-6 text-right" dir="rtl">
           <div className="space-y-2">
@@ -91,7 +95,7 @@ export default function LoginPage() {
             disabled={loading}
             className={`
               w-full py-4 rounded-2xl font-black text-lg transition-all shadow-lg 
-              ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#0F172A] hover:bg-[#1E293B] text-white shadow-gray-200'}
+              ${loading ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-[#0F172A] hover:bg-[#1E293B] text-white shadow-gray-200'}
             `}
           >
             {loading ? 'جاري التحقق من الهوية...' : 'تسجيل الدخول'}
