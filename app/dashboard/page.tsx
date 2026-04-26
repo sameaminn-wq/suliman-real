@@ -1,110 +1,219 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import { DollarSign, Home, Users, TrendingUp, Building2, Clock } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { 
+  Building2, MapPin, ImageIcon, 
+  Loader2, Save, AlignRight, 
+  CheckCircle, AlertTriangle 
+} from 'lucide-react';
 
-export default async function DashboardPage() {
-  const supabase = createServerComponentClient({ cookies });
+export default function NewPropertyPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    location: '',
+    price: '',
+    area: '',
+    rooms: '',
+    bathrooms: '',
+    type: 'شقة',
+    description: '',
+    image_url: ''
+  });
 
-  // 1. الحماية: التأكد من وجود جلسة دخول (Session)
-  const { data: { session } } = await supabase.auth.getSession();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
 
-  // إذا لم يكن مسجلاً، يتم طرده للرابط السري
-  if (!session) {
-    redirect('/same-2090');
-  }
+    setLoading(true);
 
-  // 2. جلب بيانات حقيقية من قاعدة البيانات
-  // جلب إجمالي عدد العقارات
-  const { count: totalProperties } = await supabase
-    .from('properties')
-    .select('*', { count: 'exact', head: true });
+    try {
+      // تنظيف البيانات وتحويلها لأنواعها الصحيحة أمنياً
+      const cleanData = {
+        title: formData.title.trim(),
+        location: formData.location.trim(),
+        price: parseFloat(formData.price) || 0,
+        area: parseFloat(formData.area) || 0,
+        rooms: parseInt(formData.rooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        type: formData.type,
+        description: formData.description.trim(),
+        image_url: formData.image_url.trim() || null,
+        status: 'available', // حالة افتراضية آمنة
+        created_at: new Date().toISOString(),
+      };
 
-  // جلب آخر 3 عقارات مضافة لعرضها في الجدول
-  const { data: recentProperties } = await supabase
-    .from('properties')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(3);
+      const { error } = await supabase
+        .from('properties')
+        .insert([cleanData]);
 
-  const stats = [
-    { title: 'إجمالي المبيعات (تقديري)', value: '45,200,000 ج.م', icon: DollarSign, color: 'bg-blue-500' },
-    { title: 'الوحدات المتاحة حالياً', value: totalProperties?.toString() || '0', icon: Home, color: 'bg-[#10B981]' },
-    { title: 'طلبات المعاينة', value: '12', icon: Users, color: 'bg-purple-500' },
-    { title: 'نسبة النمو', value: '+18%', icon: TrendingUp, color: 'bg-orange-500' },
-  ];
+      if (error) throw error;
+
+      setSuccess(true);
+      // تأخير بسيط لإظهار رسالة النجاح ثم التحويل
+      setTimeout(() => {
+        router.push('/dashboard/properties');
+        router.refresh();
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Submission Error:', error.message);
+      alert('حدث خطأ في النظام: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
-      {/* القائمة الجانبية */}
       <Sidebar role="ADMIN" />
-
+      
       <main className="mr-72 flex-1 p-10">
-        {/* الهيدر */}
-        <header className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-[#0F172A]">لوحة التحكم</h1>
-            <p className="text-gray-500 mt-1">مرحباً بك، سيد سليمان. إليك نظرة سريعة على أعمالك اليوم.</p>
-          </div>
-          <div className="flex items-center gap-4 bg-white p-2 pl-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="w-12 h-12 bg-[#10B981] rounded-xl flex items-center justify-center text-white font-bold text-xl">
-              S
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <header className="mb-10 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-black text-[#0F172A] tracking-tight">إضافة وحدة عقارية</h1>
+              <p className="text-gray-500 mt-2 text-lg">أدخل البيانات الفنية للوحدة ليتم أرشفتها في النظام</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-[#0F172A]">سليمان العزومي</p>
-              <p className="text-xs text-[#10B981]">المدير التنفيذي</p>
-            </div>
-          </div>
-        </header>
-
-        {/* شبكة الإحصائيات */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((s, i) => (
-            <div key={i} className="bg-white p-7 rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-md transition-all group">
-              <div className={`${s.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
-                <s.icon size={24} />
+            {success && (
+              <div className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-6 py-3 rounded-2xl font-bold animate-bounce">
+                <CheckCircle size={20} /> تم الحفظ بنجاح
               </div>
-              <p className="text-gray-400 text-sm font-medium">{s.title}</p>
-              <h3 className="text-2xl font-bold text-[#0F172A] mt-1">{s.value}</h3>
-            </div>
-          ))}
-        </div>
+            )}
+          </header>
 
-        {/* عرض الوحدات الأخيرة المضافة */}
-        <div className="mt-12 bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-bold text-[#0F172A] flex items-center gap-2">
-              <Building2 className="text-[#10B981]" />
-              أحدث الوحدات المضافة
-            </h2>
-            <button className="text-[#10B981] text-sm font-bold hover:underline">عرض الكل</button>
-          </div>
-
-          <div className="space-y-4">
-            {recentProperties?.map((prop) => (
-              <div key={prop.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden shadow-sm">
-                    <img src={prop.image_url} alt={prop.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#0F172A]">{prop.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                      <Clock size={12} />
-                      <span>{new Date(prop.created_at).toLocaleDateString('ar-EG')}</span>
-                      <span>•</span>
-                      <span>{prop.location}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-[#10B981]">{Number(prop.price).toLocaleString()} ج.م</p>
-                  <p className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full inline-block mt-1">نشط في المعرض</p>
+          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50">
+            
+            {/* القسم الأول: المعلومات الأساسية */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-sm font-black text-[#0F172A] mr-1">مسمى الوحدة</label>
+                <div className="relative">
+                  <Building2 className="absolute right-4 top-4 text-gray-300" size={20} />
+                  <input 
+                    required
+                    type="text"
+                    placeholder="مثال: فيلا الياسمين - التجمع الخامس"
+                    className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] outline-none transition-all font-medium"
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-black text-[#0F172A] mr-1">الموقع التفصيلي</label>
+                <div className="relative">
+                  <MapPin className="absolute right-4 top-4 text-gray-300" size={20} />
+                  <input 
+                    required
+                    type="text"
+                    placeholder="المدينة، الحي، الشارع"
+                    className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] outline-none transition-all font-medium"
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* القسم الثاني: البيانات الرقمية */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { label: 'السعر (ج.م)', key: 'price', placeholder: '0.00' },
+                { label: 'المساحة (م²)', key: 'area', placeholder: '0' },
+                { label: 'غرف النوم', key: 'rooms', placeholder: '0' },
+                { label: 'الحمامات', key: 'bathrooms', placeholder: '0' }
+              ].map((item) => (
+                <div key={item.key} className="space-y-3">
+                  <label className="text-sm font-black text-[#0F172A] mr-1">{item.label}</label>
+                  <input 
+                    required 
+                    type="number" 
+                    min="0"
+                    placeholder={item.placeholder}
+                    className="w-full p-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] font-bold text-[#10B981]" 
+                    value={(formData as any)[item.key]}
+                    onChange={(e) => setFormData({...formData, [item.key]: e.target.value})} 
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* القسم الثالث: النوع والوسائط */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-sm font-black text-[#0F172A] mr-1">نوع العقار</label>
+                <select 
+                  className="w-full p-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] font-medium appearance-none"
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                >
+                  <option value="شقة">شقة سكنية</option>
+                  <option value="فيلا">فيلا / قصر</option>
+                  <option value="دوبلكس">دوبلكس</option>
+                  <option value="محل تجاري">محل تجاري</option>
+                  <option value="مكتب">مكتب إداري</option>
+                </select>
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-black text-[#0F172A] mr-1">رابط صورة المعرض الرئيسية</label>
+                <div className="relative">
+                  <ImageIcon className="absolute right-4 top-4 text-gray-300" size={20} />
+                  <input 
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981]"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* حقل الوصف المضاف */}
+            <div className="space-y-3">
+              <label className="text-sm font-black text-[#0F172A] mr-1">وصف تفصيلي للوحدة</label>
+              <div className="relative">
+                <AlignRight className="absolute right-4 top-4 text-gray-300" size={20} />
+                <textarea 
+                  rows={4}
+                  placeholder="اكتب مميزات العقار، التشطيب، والخدمات القريبة..."
+                  className="w-full pr-12 pl-6 py-4 rounded-3xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] transition-all resize-none font-medium"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* زر الحفظ الإستراتيجي */}
+            <button 
+              disabled={loading || success}
+              type="submit"
+              className={`
+                w-full py-5 rounded-[2rem] font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl
+                ${success 
+                  ? 'bg-emerald-500 text-white shadow-emerald-200' 
+                  : 'bg-[#0F172A] text-white hover:bg-[#1e293b] shadow-gray-200'}
+                disabled:opacity-70 disabled:cursor-not-allowed
+              `}
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" size={24} />
+              ) : success ? (
+                <><CheckCircle size={24}/> تم النشر بنجاح</>
+              ) : (
+                <><Save size={24}/> اعتماد ونشر الوحدة</>
+              )}
+            </button>
+          </form>
         </div>
       </main>
     </div>
