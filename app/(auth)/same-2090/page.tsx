@@ -15,6 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
+    // التحقق الأساسي من الحقول
     if (!email || !password) {
       toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       setLoading(false);
@@ -22,12 +23,14 @@ export default function LoginPage() {
     }
 
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({
+      // محاولة تسجيل الدخول عبر Supabase
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(), 
         password: password,
       });
 
       if (error) {
+        // التعامل مع أخطاء الدخول
         if (error.message.includes('Invalid login credentials')) {
           toast.error('بيانات الدخول غير صحيحة، يرجى التحقق');
         } else {
@@ -35,17 +38,17 @@ export default function LoginPage() {
         }
         setLoading(false);
       } else {
-        // [إصلاح رقم 2]: تحديث الجلسة فوراً لضمان قراءة الكوكيز من قبل الـ Middleware
-        toast.success('تم التحقق بنجاح! جاري تحضير اللوحة...');
+        // 🔥 الحكم النهائي: نجاح الدخول مع تحسين الأداء لـ StackBlitz
+        toast.success('تم التحقق بنجاح!');
         
-        // تحديث الراوتر داخلياً
-        router.refresh(); 
+        // إعادة حالة الزر فوراً
+        setLoading(false);
 
-        // [إصلاح رقم 3]: استخدام التوجيه القسري (Hard Redirect)
-        // هذا يضمن أن المتصفح يرسل الكوكيز الجديدة للـ Middleware بشكل سليم
+        // تأخير بسيط (200ms) لضمان استقرار الكوكيز قبل التوجيه
         setTimeout(() => {
-          window.location.replace('/dashboard');
-        }, 800);
+          router.replace('/dashboard');
+          router.refresh();
+        }, 200);
       }
     } catch (err) {
       toast.error('حدث خطأ غير متوقع في الاتصال');
