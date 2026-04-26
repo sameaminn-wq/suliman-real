@@ -58,7 +58,7 @@ export default function NewPropertyPage() {
       setSuccess(true);
       // تأخير بسيط لإظهار رسالة النجاح ثم التحويل
       setTimeout(() => {
-        router.push('/dashboard/properties');
+        router.push('/dashboard/add-properties');
         router.refresh();
       }, 1500);
 
