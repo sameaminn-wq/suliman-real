@@ -1,22 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // تفعيل Server Actions بشكل صريح لتجاوز خطأ الـ Build
+  // 1. تفعيل Server Actions (ضروري جداً لتجنب خطأ الـ Build في بيئات السحاب)
   experimental: {
     serverActions: true,
   },
-  // إعدادات الصور لضمان عدم انهيار الموقع عند العرض
+
+  // 2. إعدادات الصور (صيغة احترافية وشاملة)
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.supabase.co', 
+        hostname: '**', // يسمح بجميع الصور من أي مصدر خارجي (حل مرن لـ StackBlitz)
       },
     ],
   },
+
+  // 3. تحسينات إضافية لاستقرار StackBlitz
+  reactStrictMode: true,
+  swcMinify: true,
 };
 
-module.exports = nextConfig;
+module.exports = nextConfig;قع
