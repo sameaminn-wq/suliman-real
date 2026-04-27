@@ -1,23 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 1. تفعيل Server Actions (ضروري جداً لتجنب خطأ الـ Build في بيئات السحاب)
+  // تفعيل Server Actions
   experimental: {
     serverActions: true,
   },
 
-  // 2. إعدادات الصور (صيغة احترافية وشاملة)
+  // إعدادات الصور المحسنة لبيئة StackBlitz
   images: {
+    unoptimized: true, // أضفت هذا السطر لحل مشكلة الـ 404 التي ظهرت لك
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**', // يسمح بجميع الصور من أي مصدر خارجي (حل مرن لـ StackBlitz)
+        hostname: '**',
       },
     ],
   },
 
-  // 3. تحسينات إضافية لاستقرار StackBlitz
-  reactStrictMode: true,
+  // تحسينات الاستقرار
+  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصفح
   swcMinify: true,
 };
 
-module.exports = nextConfig;قع
+module.exports = nextConfig;
