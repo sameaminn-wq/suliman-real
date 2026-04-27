@@ -5,68 +5,71 @@ import Sidebar from '@/components/Sidebar';
 import { supabase } from '@/lib/supabase';
 import { UserPlus, Shield, Trash2, Mail, BadgeCheck, X, Loader2, Users } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { addStaffAction } from '@/app/actions/admin'; // استيراد الأكشن الآمن
 
 export default function AdminStaffPage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false); // فصل حالة الإضافة
+  const [adding, setAdding] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newStaff, setNewStaff] = useState({ email: '', full_name: '', role: 'EMPLOYEE' });
+  const [newStaff, setNewStaff] = useState({ email: '', full_name: '', role: 'employee' });
 
-  // 1. جلب البيانات باستخدام useCallback لتحسين الأداء
+  // 1. جلب البيانات - تم إصلاح التبعيات لمنع الـ Loop 429
   const fetchStaff = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('role', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('role', { ascending: true });
 
-    if (error) {
-      toast.error(`خطأ في جلب البيانات: ${error.message}`);
-    } else {
-      setStaff(data || []);
+      if (error) {
+        toast.error(`خطأ في جلب البيانات: ${error.message}`);
+      } else {
+        setStaff(data || []);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
+  // تنفيذ الجلب مرة واحدة فقط عند التحميل
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
 
-  // 2. منطق الحذف مع معالجة الأخطاء
+  // 2. منطق الحذف
   const handleDelete = async (id: string) => {
     if (!confirm('هل أنت متأكد من إزالة هذا الموظف؟')) return;
 
     const { error } = await supabase.from('profiles').delete().eq('id', id);
 
     if (error) {
-      toast.error('لا تملك صلاحية الحذف أو حدث خطأ في الخادم');
+      toast.error('حدث خطأ في الحذف، تأكد من الصلاحيات');
     } else {
       setStaff(prev => prev.filter(member => member.id !== id));
       toast.success('تمت إزالة الموظف بنجاح');
     }
   };
 
-  // 3. إضافة موظف مع تضمين الإيميل ومعالجة الحالة
+  // 3. إضافة موظف عبر الـ Server Action الآمن
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdding(true);
 
-    const { data, error } = await supabase.from('profiles').insert([
-      { 
-        full_name: newStaff.full_name, 
-        role: newStaff.role,
-        email: newStaff.email // تم الإصلاح هنا
-      }
-    ]).select();
+    const result = await addStaffAction({
+      email: newStaff.email,
+      full_name: newStaff.full_name,
+      role: newStaff.role
+    });
 
-    if (error) {
-      toast.error(`فشل الإضافة: ${error.message}`);
+    if (!result.success) {
+      toast.error(`فشل الإضافة: ${result.error}`);
     } else {
-      setStaff(prev => [...prev, data[0]]);
-      toast.success('تم اعتماد الموظف الجديد في النظام');
+      toast.success('تم اعتماد الموظف الجديد بنجاح');
+      fetchStaff(); // تحديث القائمة فوراً
       setIsModalOpen(false);
-      setNewStaff({ email: '', full_name: '', role: 'EMPLOYEE' });
+      setNewStaff({ email: '', full_name: '', role: 'employee' });
     }
     setAdding(false);
   };
@@ -115,26 +118,25 @@ export default function AdminStaffPage() {
                   <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-[#10B981] border border-gray-100">
                     <Shield size={24} />
                   </div>
-                  <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-wide ${
-                    member.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 
-                    member.role === 'SECRETARY' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                  <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-wide uppercase ${
+                    member.role === 'admin' ? 'bg-purple-100 text-purple-700' : 
+                    member.role === 'secretary' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {member.role === 'ADMIN' ? 'مدير نظام' : member.role === 'SECRETARY' ? 'سكرتارية' : 'مبيعات'}
+                    {member.role === 'admin' ? 'مدير نظام' : member.role === 'secretary' ? 'سكرتارية' : 'مبيعات'}
                   </span>
                 </div>
                 
                 <h3 className="text-xl font-black text-[#0F172A] mb-1">{member.full_name}</h3>
                 <p className="text-gray-400 text-xs mb-6 flex items-center gap-2">
-                   <Mail size={12} /> {member.email || 'لا يوجد بريد مسجل'}
+                   <Mail size={12} /> {member.email}
                 </p>
 
                 <div className="flex gap-3 pt-6 border-t border-gray-50 opacity-0 group-hover:opacity-100 transition-all">
-                  <button className="flex-1 bg-gray-50 text-gray-600 py-3 rounded-2xl text-xs font-black hover:bg-gray-100">تعديل الصلاحية</button>
                   <button 
                     onClick={() => handleDelete(member.id)}
-                    className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
+                    className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all w-full flex items-center justify-center gap-2 font-bold text-xs"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} /> حذف العضو
                   </button>
                 </div>
               </div>
@@ -144,14 +146,10 @@ export default function AdminStaffPage() {
                 <BadgeCheck size={120} className="absolute -left-8 -bottom-8 opacity-10 rotate-12" />
                 <h4 className="text-sm opacity-80 mb-1 font-bold">إجمالي الطاقم</h4>
                 <div className="text-6xl font-black">{staff.length}</div>
-                <p className="mt-6 text-sm opacity-90 leading-relaxed font-medium">
-                  نظام سليمان العقاري يؤمن بياناتك من خلال توزيع الصلاحيات الذكي.
-                </p>
             </div>
           </div>
         )}
 
-        {/* Modal الإضافة */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative">
@@ -160,47 +158,29 @@ export default function AdminStaffPage() {
               </button>
               
               <h2 className="text-2xl font-black text-[#0F172A] mb-2">إضافة عضو جديد</h2>
-              <p className="text-gray-400 text-sm mb-8">سيتم منحه صلاحيات الوصول فور الحفظ</p>
+              <p className="text-gray-400 text-sm mb-8">سيتم إنشاء حساب له وصلاحيات وصول فوراً</p>
 
               <form onSubmit={handleAddStaff} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold mr-1">الاسم بالكامل</label>
-                  <input 
-                    required
-                    className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" 
-                    placeholder="مثال: محمد أحمد"
-                    value={newStaff.full_name}
-                    onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
-                  />
+                <div>
+                  <label className="text-sm font-bold mr-1 block mb-2">الاسم بالكامل</label>
+                  <input required className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" 
+                    value={newStaff.full_name} onChange={e => setNewStaff({...newStaff, full_name: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold mr-1">البريد الإلكتروني</label>
-                  <input 
-                    required
-                    type="email"
-                    className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" 
-                    placeholder="mail@example.com"
-                    value={newStaff.email}
-                    onChange={e => setNewStaff({...newStaff, email: e.target.value})}
-                  />
+                <div>
+                  <label className="text-sm font-bold mr-1 block mb-2">البريد الإلكتروني</label>
+                  <input required type="email" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" 
+                    value={newStaff.email} onChange={e => setNewStaff({...newStaff, email: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold mr-1">نوع الصلاحية</label>
-                  <select 
-                    className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]"
-                    value={newStaff.role}
-                    onChange={e => setNewStaff({...newStaff, role: e.target.value})}
-                  >
-                    <option value="EMPLOYEE">موظف مبيعات</option>
-                    <option value="SECRETARY">سكرتارية</option>
-                    <option value="ADMIN">مدير نظام</option>
+                <div>
+                  <label className="text-sm font-bold mr-1 block mb-2">نوع الصلاحية</label>
+                  <select className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]"
+                    value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value})}>
+                    <option value="employee">موظف مبيعات</option>
+                    <option value="secretary">سكرتارية</option>
+                    <option value="admin">مدير نظام</option>
                   </select>
                 </div>
-                <button 
-                  type="submit"
-                  disabled={adding}
-                  className="w-full py-4 bg-[#10B981] text-white rounded-2xl font-black text-lg shadow-lg shadow-emerald-100 hover:bg-[#0da06f] transition-all mt-4 flex justify-center items-center gap-2"
-                >
+                <button type="submit" disabled={adding} className="w-full py-4 bg-[#10B981] text-white rounded-2xl font-black text-lg hover:bg-[#0da06f] transition-all flex justify-center items-center gap-2">
                   {adding ? <Loader2 className="animate-spin" size={20} /> : 'اعتماد الموظف'}
                 </button>
               </form>

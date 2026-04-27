@@ -9,7 +9,9 @@ import {
   Building2
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // أضفنا useRouter
+import { supabase } from '@/lib/supabase'; // تأكد من مسار السوبا بيس لديك
+import toast from 'react-hot-toast';
 
 type Role = 'ADMIN' | 'SECRETARY' | 'EMPLOYEE';
 
@@ -52,6 +54,24 @@ const menuItems = [
 
 export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter(); // لتمكين التنقل البرمجي
+
+  // دالة تسجيل الخروج
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success('تم تسجيل الخروج بنجاح');
+      
+      // توجيه المستخدم لصفحة تسجيل الدخول
+      router.push('/login'); 
+      router.refresh(); // لضمان مسح أي بيانات مخزنة في الكاش
+    } catch (error: any) {
+      toast.error('حدث خطأ أثناء تسجيل الخروج');
+      console.error(error.message);
+    }
+  };
 
   return (
     <div className="w-72 bg-[#0F172A] min-h-screen text-white p-6 flex flex-col fixed right-0 top-0 border-l border-white/5 z-50">
@@ -97,9 +117,7 @@ export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
       {/* Footer Section */}
       <div className="mt-auto border-t border-white/5 pt-6">
         <button 
-          onClick={() => {
-            // أضف منطق تسجيل الخروج هنا (مثلاً supabase.auth.signOut())
-          }}
+          onClick={handleLogout} // ربط الدالة هنا
           className="flex items-center gap-4 p-4 w-full text-red-400 hover:bg-red-500/10 rounded-2xl transition-all group"
         >
           <LogOut size={22} className="group-hover:translate-x-1 transition-transform" />
