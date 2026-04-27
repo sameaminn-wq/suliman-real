@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '../../lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 /**
