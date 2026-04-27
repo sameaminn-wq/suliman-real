@@ -1,7 +1,10 @@
 'use server'
 import { createClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/utils/supabase/server' // تأكد من مسار السيرفر كلاينت
-import { revalidatePath } from 'next/cache'
+// قم بتغيير هذا السطر:
+// import { createClient } from '@/utils/supabase/server';
+
+// إلى هذا السطر الصحيح بناءً على هيكلة ملفاتك:
+import { createClient } from '@/lib/supabase/server';import { revalidatePath } from 'next/cache'
 
 export async function addStaffAction(formData: { email: string, full_name: string, role: string }) {
   
