@@ -1,9 +1,8 @@
 'use server'
 
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-// استخدام المسار النسبي بدلاً من @ لتجاوز مشكلة "Module not found"
-import { createClient as createServerClient } from '@/lib/supabase/server'
-  import { revalidatePath } from 'next/cache'
+import { createClient as createServerClient } from '../../lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 export async function addStaffAction(formData: { email: string, full_name: string, role: string }) {
   
@@ -24,6 +23,7 @@ export async function addStaffAction(formData: { email: string, full_name: strin
   }
 
   // 2. استخدام مفتاح الخدمة للعمليات الإدارية
+  // تأكد أن هذا المفتاح مضاف في Vercel Environment Variables
   const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!, 
@@ -31,6 +31,7 @@ export async function addStaffAction(formData: { email: string, full_name: strin
   )
 
   try {
+    // 3. إنشاء المستخدم في Auth
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: formData.email,
       password: 'DefaultPassword123!', 
@@ -39,6 +40,7 @@ export async function addStaffAction(formData: { email: string, full_name: strin
 
     if (authError) throw new Error(authError.message)
 
+    // 4. إنشاء سجل البروفايل
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert([{ 
@@ -49,6 +51,7 @@ export async function addStaffAction(formData: { email: string, full_name: strin
       }])
 
     if (profileError) {
+      // تراجع في حال الفشل
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
       throw new Error(profileError.message)
     }
