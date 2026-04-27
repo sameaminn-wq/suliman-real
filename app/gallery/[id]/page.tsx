@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -30,12 +30,15 @@ export default function PropertyDetailsPage() {
   const { id } = useParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // استخدام Ref لمنع تكرار زيادة المشاهدات في حالة إعادة الصيرورة (Re-render)
+  const viewIncremented = useRef(false);
 
   const fetchPropertyData = useCallback(async () => {
     if (!id) return;
     
     try {
-      // جلب البيانات الأساسية
+      setLoading(true);
       const { data, error } = await supabase
         .from('properties')
         .select('*')
@@ -45,10 +48,13 @@ export default function PropertyDetailsPage() {
       if (error) throw error;
       setProperty(data);
 
-      // تحديث المشاهدات بشكل "صامت" في الخلفية لضمان سرعة الاستجابة
-      supabase.rpc('increment_views', { property_id: id }).then(({ error }) => {
-        if (error) console.error('View Update Failed:', error);
-      });
+      // تحديث المشاهدات: يتم مرة واحدة فقط لكل تحميل صفحة باستخدام useRef
+      if (!viewIncremented.current) {
+        supabase.rpc('increment_views', { property_id: id }).then(({ error }) => {
+          if (error) console.error('View Update Failed:', error);
+          else viewIncremented.current = true;
+        });
+      }
 
     } catch (error: any) {
       console.error('Error:', error.message);
@@ -56,21 +62,22 @@ export default function PropertyDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id]); // الاعتماد على id فقط لضمان جلب البيانات عند تغير الرابط
 
   useEffect(() => {
     fetchPropertyData();
   }, [fetchPropertyData]);
 
-  // دالة لمشاركة العقار
   const handleShare = () => {
+    const shareData = {
+      title: property?.title || 'سليمان للعقارات',
+      url: typeof window !== 'undefined' ? window.location.href : '',
+    };
+
     if (navigator.share) {
-      navigator.share({
-        title: property?.title,
-        url: window.location.href,
-      }).catch(console.error);
+      navigator.share(shareData).catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(shareData.url);
       toast.success('تم نسخ الرابط لمشاركته');
     }
   };
@@ -94,8 +101,7 @@ export default function PropertyDetailsPage() {
           <Info className="text-red-500 w-12 h-12" />
         </div>
         <h2 className="text-3xl font-black text-[#0F172A] mb-4">عذراً، لم يتم العثور على العقار</h2>
-        <p className="text-gray-400 mb-8 max-w-sm">ربما تم حذف العقار أو انتقل إلى رابط جديد.</p>
-        <Link href="/gallery" className="bg-[#0F172A] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-[#1E293B] transition-all shadow-xl shadow-gray-200">
+        <Link href="/gallery" className="bg-[#0F172A] text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-[#1E293B] transition-all">
           <ArrowRight size={20} /> العودة لمعرض العقارات
         </Link>
       </div>
@@ -106,35 +112,34 @@ export default function PropertyDetailsPage() {
     <div className="min-h-screen bg-white pb-20 font-sans" dir="rtl">
       <Toaster position="top-center" />
       
-      {/* Hero Section المطور */}
+      {/* Hero Section */}
       <div className="h-[75vh] w-full relative overflow-hidden group">
         <img 
-          src={property.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
+          src={property.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070'} 
           className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110"
           alt={property.title}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] via-[#0F172A]/20 to-black/40"></div>
         
-        {/* أزرار سريعة في الزاوية */}
         <div className="absolute top-8 left-8 flex gap-3">
           <button onClick={handleShare} className="p-4 bg-white/10 backdrop-blur-md text-white rounded-2xl hover:bg-white/20 transition-all border border-white/10">
             <Share2 size={20} />
           </button>
-          <button className="p-4 bg-white/10 backdrop-blur-md text-white rounded-2xl hover:bg-red-500 hover:text-white transition-all border border-white/10">
+          <button className="p-4 bg-white/10 backdrop-blur-md text-white rounded-2xl hover:bg-red-500 transition-all border border-white/10">
             <Heart size={20} />
           </button>
         </div>
 
         <div className="absolute bottom-16 right-10 left-10 text-white">
           <div className="flex items-center gap-3 mb-6">
-            <span className="bg-[#10B981] px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20">
+            <span className="bg-[#10B981] px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest">
               {property.type}
             </span>
             <span className="bg-white/10 backdrop-blur-md px-5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border border-white/5">
-              <Eye size={16} className="text-[#10B981]" /> {property.views || 0} مشاهدة حقيقية
+              <Eye size={16} className="text-[#10B981]" /> {property.views || 0} مشاهدة
             </span>
           </div>
-          <h1 className="text-4xl md:text-7xl font-black mb-6 leading-[1.1] max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <h1 className="text-4xl md:text-7xl font-black mb-6 leading-[1.1] max-w-5xl">
             {property.title}
           </h1>
           <div className="flex items-center gap-3 text-white/90 text-xl font-medium">
@@ -147,19 +152,17 @@ export default function PropertyDetailsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-16 mt-20">
-        {/* المحتوى الرئيسي */}
         <div className="lg:col-span-2 space-y-16">
           <section>
             <h2 className="text-3xl font-black text-[#0F172A] mb-8 flex items-center gap-4">
               <span className="w-3 h-10 bg-[#10B981] rounded-full inline-block"></span>
               نظرة عامة على العقار
             </h2>
-            <div className="bg-[#F8FAFC] p-10 rounded-[3rem] border border-gray-50 leading-[2.2] text-gray-600 text-lg whitespace-pre-line shadow-inner">
+            <div className="bg-[#F8FAFC] p-10 rounded-[3rem] border border-gray-50 leading-[2.2] text-gray-600 text-lg whitespace-pre-line">
               {property.description}
             </div>
           </section>
 
-          {/* شبكة المواصفات المحسنة */}
           <section>
             <h2 className="text-2xl font-black text-[#0F172A] mb-8">المواصفات الفنية</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -169,9 +172,9 @@ export default function PropertyDetailsPage() {
                 { icon: <Bath size={32} />, label: 'الحمامات', value: property.bathrooms },
                 { icon: <div className="text-[#10B981] font-black text-2xl tracking-tighter">L.E</div>, label: 'السعر', value: Number(property.price).toLocaleString() }
               ].map((item, idx) => (
-                <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 text-center group">
+                <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all text-center group">
                   <div className="text-[#10B981] mb-4 flex justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
-                  <p className="text-gray-400 text-xs font-bold mb-1 uppercase tracking-widest">{item.label}</p>
+                  <p className="text-gray-400 text-xs font-bold mb-1 uppercase">{item.label}</p>
                   <p className="font-black text-2xl text-[#0F172A]">{item.value}</p>
                 </div>
               ))}
@@ -179,47 +182,23 @@ export default function PropertyDetailsPage() {
           </section>
         </div>
 
-        {/* كارت التواصل الذكي (Sticky) */}
         <div className="lg:col-span-1">
-          <div className="bg-[#0F172A] p-12 rounded-[3.5rem] sticky top-10 shadow-2xl shadow-emerald-900/20 overflow-hidden group">
-            {/* زخرفة خلفية */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#10B981] opacity-5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:opacity-10 transition-opacity"></div>
-            
-            <h3 className="text-3xl font-black text-white mb-4 text-center leading-tight">احجز موعد المعاينة</h3>
-            <p className="text-gray-400 text-center text-sm mb-12 leading-relaxed">فريقنا جاهز لمرافقتك في جولة خاصة لاستكشاف هذا العقار على أرض الواقع.</p>
-            
-            <div className="space-y-5 relative z-10">
+          <div className="bg-[#0F172A] p-12 rounded-[3.5rem] sticky top-10 shadow-2xl">
+            <h3 className="text-3xl font-black text-white mb-4 text-center">احجز موعد المعاينة</h3>
+            <div className="space-y-5">
               <a 
-                href={`https://wa.me/+201156383133?text=مرحباً، أريد الاستفسار عن عقار: ${property.title}`}
+                href={`https://wa.me/+201156383133?text=${encodeURIComponent(`مرحباً، أريد الاستفسار عن عقار: ${property.title}`)}`}
                 target="_blank"
-                className="w-full flex items-center justify-center gap-4 bg-[#10B981] text-white py-6 rounded-[2rem] font-black text-lg hover:bg-[#0da06f] transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-500/20"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-4 bg-[#10B981] text-white py-6 rounded-[2rem] font-black text-lg hover:bg-[#0da06f] transition-all shadow-xl shadow-emerald-500/20"
               >
                 <MessageCircle size={26} />
                 واتساب مباشر
               </a>
-              
-              <a 
-                href="tel:+201156383133"
-                className="w-full flex items-center justify-center gap-4 bg-white/5 text-white py-6 rounded-[2rem] font-black text-lg hover:bg-white/10 transition-all border border-white/10"
-              >
+              <a href="tel:+201156383133" className="w-full flex items-center justify-center gap-4 bg-white/5 text-white py-6 rounded-[2rem] font-black text-lg border border-white/10">
                 <Phone size={26} />
                 اتصال سريع
               </a>
-            </div>
-
-            <div className="mt-12 pt-10 border-t border-white/5 space-y-5">
-              <div className="flex items-center gap-5 text-gray-300 group/item">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/item:bg-emerald-500/20 transition-colors">
-                  <CheckCircle2 size={18} className="text-[#10B981]" />
-                </div>
-                <span className="font-bold text-sm">متاح للمعاينة الفورية</span>
-              </div>
-              <div className="flex items-center gap-5 text-gray-300 group/item">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover/item:bg-emerald-500/20 transition-colors">
-                  <CheckCircle2 size={18} className="text-[#10B981]" />
-                </div>
-                <span className="font-bold text-sm">أوراق ملكية موثقة 100%</span>
-              </div>
             </div>
           </div>
         </div>

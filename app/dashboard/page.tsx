@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // استيراد المكون المحسن
 import Sidebar from '@/components/Sidebar';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -34,7 +35,6 @@ export default function NewPropertyPage() {
     setLoading(true);
 
     try {
-      // تنظيف البيانات وتحويلها لأنواعها الصحيحة أمنياً
       const cleanData = {
         title: formData.title.trim(),
         location: formData.location.trim(),
@@ -45,7 +45,7 @@ export default function NewPropertyPage() {
         type: formData.type,
         description: formData.description.trim(),
         image_url: formData.image_url.trim() || null,
-        status: 'available', // حالة افتراضية آمنة
+        status: 'available',
         created_at: new Date().toISOString(),
       };
 
@@ -56,7 +56,6 @@ export default function NewPropertyPage() {
       if (error) throw error;
 
       setSuccess(true);
-      // تأخير بسيط لإظهار رسالة النجاح ثم التحويل
       setTimeout(() => {
         router.push('/dashboard');
         router.refresh();
@@ -76,7 +75,6 @@ export default function NewPropertyPage() {
       
       <main className="mr-72 flex-1 p-10">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <header className="mb-10 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-black text-[#0F172A] tracking-tight">إضافة وحدة عقارية</h1>
@@ -91,7 +89,20 @@ export default function NewPropertyPage() {
 
           <form onSubmit={handleSubmit} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50">
             
-            {/* القسم الأول: المعلومات الأساسية */}
+            {/* عرض معاينة الصورة - تحسين أداء وتجربة مستخدم */}
+            {formData.image_url && (
+              <div className="relative w-full h-64 rounded-[2rem] overflow-hidden border-4 border-emerald-50 shadow-inner">
+                <Image 
+                  src={formData.image_url} 
+                  alt="معاينة الوحدة" 
+                  fill 
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 800px"
+                  unoptimized // نستخدمها هنا لأن الرابط خارجي ومباشر من المستخدم
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-sm font-black text-[#0F172A] mr-1">مسمى الوحدة</label>
@@ -124,7 +135,6 @@ export default function NewPropertyPage() {
               </div>
             </div>
 
-            {/* القسم الثاني: البيانات الرقمية */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
                 { label: 'السعر (ج.م)', key: 'price', placeholder: '0.00' },
@@ -147,7 +157,6 @@ export default function NewPropertyPage() {
               ))}
             </div>
 
-            {/* القسم الثالث: النوع والوسائط */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-sm font-black text-[#0F172A] mr-1">نوع العقار</label>
@@ -178,7 +187,6 @@ export default function NewPropertyPage() {
               </div>
             </div>
 
-            {/* حقل الوصف المضاف */}
             <div className="space-y-3">
               <label className="text-sm font-black text-[#0F172A] mr-1">وصف تفصيلي للوحدة</label>
               <div className="relative">
@@ -193,7 +201,6 @@ export default function NewPropertyPage() {
               </div>
             </div>
 
-            {/* زر الحفظ الإستراتيجي */}
             <button 
               disabled={loading || success}
               type="submit"

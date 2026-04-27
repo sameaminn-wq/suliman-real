@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image'; // استيراد المكون المحسن
 import { supabase } from '@/lib/supabase';
 import { MapPin, Maximize, BedDouble, Bath, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -29,25 +30,17 @@ export default function GalleryPage() {
         setLoading(true);
         setErrorMessage(null);
 
-        // طلب البيانات من Supabase
         const { data, error } = await supabase
           .from('properties')
           .select('*')
           .order('created_at', { ascending: false });
 
         if (error) {
-          // طباعة الخطأ التقني في الكونسول للمطور
           console.error('--- Supabase Error Details ---');
-          console.error('Code:', error.code);
-          console.error('Message:', error.message);
-          console.error('Hint:', error.hint);
-          
           setErrorMessage(`فشل جلب البيانات: ${error.message}`);
         } else if (!data || data.length === 0) {
-          console.warn('الاستعلام نجح لكن الجدول فارغ أو الـ RLS يمنع القراءة.');
           setProperties([]);
         } else {
-          console.log('تم جلب البيانات بنجاح:', data);
           setProperties(data);
         }
       } catch (err: any) {
@@ -62,7 +55,7 @@ export default function GalleryPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] pb-20" dir="rtl">
       {/* Header */}
       <div className="bg-white py-16 border-b text-center">
         <h1 className="text-4xl font-bold text-[#0F172A] mb-4">معرض العقارات الفاخرة</h1>
@@ -87,7 +80,6 @@ export default function GalleryPage() {
             <div>
               <p className="font-bold">تنبيه تقني:</p>
               <p className="text-sm">{errorMessage}</p>
-              <p className="text-xs mt-2 opacity-70">افتح Console المتصفح (F12) لمزيد من التفاصيل.</p>
             </div>
           </div>
         )}
@@ -99,32 +91,36 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* عرض البيانات */}
+        {/* عرض البيانات مع تحسين الصور */}
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {properties.map((prop) => (
+            {properties.map((prop, index) => (
               <div key={prop.id} className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                <div className="relative h-64 bg-gray-200">
-                  <img 
-                    src={prop.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
+                <div className="relative h-64 bg-gray-100 overflow-hidden">
+                  <Image 
+                    src={prop.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070'} 
                     alt={prop.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    // إعطاء أولوية لأول 3 صور لتحسين الـ LCP
+                    priority={index < 3}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
-                  <div className="absolute top-4 right-4 bg-[#10B981] text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
+                  <div className="absolute top-4 right-4 bg-[#10B981] text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg z-10">
                     {prop.type}
                   </div>
                 </div>
 
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-bold text-[#0F172A] leading-tight">{prop.title}</h3>
-                    <div className="text-[#10B981] font-bold text-lg">
+                    <h3 className="text-xl font-bold text-[#0F172A] leading-tight line-clamp-1">{prop.title}</h3>
+                    <div className="text-[#10B981] font-bold text-lg whitespace-nowrap mr-2">
                       {Number(prop.price).toLocaleString()} <span className="text-xs">ج.م</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 text-gray-400 text-sm mb-6">
-                    <MapPin size={14} />
+                    <MapPin size={14} className="text-[#10B981]" />
                     {prop.location}
                   </div>
 
@@ -144,11 +140,11 @@ export default function GalleryPage() {
                   </div>
 
                   <Link 
-  href={`/gallery/${prop.id}`} 
-  className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all inline-block text-center"
->
-  تفاصيل العقار
-</Link>
+                    href={`/gallery/${prop.id}`} 
+                    className="w-full mt-6 bg-[#0F172A] text-white py-3 rounded-2xl font-bold text-sm hover:bg-[#1E293B] transition-all inline-block text-center"
+                  >
+                    تفاصيل العقار
+                  </Link>
                 </div>
               </div>
             ))}
