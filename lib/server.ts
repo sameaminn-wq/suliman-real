@@ -22,7 +22,7 @@ export function createClient() {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
-            // تجاهل الخطأ إذا تم استدعاؤه من مكون خادم (Server Component)
+            // gتجاهل الخطأ إذا تم استدعاؤه من مكون خادم (Server Component)
           }
         },
         // حذف الكوكي (عند تسجيل الخروج)
