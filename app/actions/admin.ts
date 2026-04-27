@@ -2,7 +2,7 @@
 
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 // استخدام المسار النسبي بدلاً من @ لتجاوز مشكلة "Module not found"
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase'
   import { revalidatePath } from 'next/cache'
 
 export async function addStaffAction(formData: { email: string, full_name: string, role: string }) {
