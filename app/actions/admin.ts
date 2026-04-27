@@ -1,18 +1,16 @@
 'use server'
-import { createClient } from '@supabase/supabase-js'
-// قم بتغيير هذا السطر:
-// import { createClient } from '@/utils/supabase/server';
 
-// إلى هذا السطر الصحيح بناءً على هيكلة ملفاتك:
-import { createClient } from '@/lib/supabase/server';import { revalidatePath } from 'next/cache'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server' // تم تعديل الاسم لمنع التضارب
+import { revalidatePath } from 'next/cache'
 
 export async function addStaffAction(formData: { email: string, full_name: string, role: string }) {
   
-  // 1. الأمان أولاً: التحقق من أن المستدعي هو "أدمن" فعلياً
+  // 1. الأمان: التحقق من أن المستدعي هو "أدمن"
   const userClient = createServerClient()
-  const { data: { user } } = await userClient.auth.getUser()
+  const { data: { user }, error: userError } = await userClient.auth.getUser()
   
-  if (!user) return { success: false, error: "غير مصرح لك" }
+  if (userError || !user) return { success: false, error: "غير مصرح لك - يرجى تسجيل الدخول" }
 
   const { data: adminCheck } = await userClient
     .from('profiles')
@@ -24,8 +22,8 @@ export async function addStaffAction(formData: { email: string, full_name: strin
     return { success: false, error: "صلاحيات مسؤول فقط مطلوبة" }
   }
 
-  // 2. استخدام مفتاح الخدمة (Admin Client) فقط بعد التأكد من الهوية
-  const supabaseAdmin = createClient(
+  // 2. استخدام مفتاح الخدمة (Admin Client) بمسمى مختلف لتجنب التضارب
+  const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!, 
     { auth: { autoRefreshToken: false, persistSession: false } }
@@ -51,7 +49,7 @@ export async function addStaffAction(formData: { email: string, full_name: strin
     }])
 
   if (profileError) {
-    // في حال فشل إنشاء البروفايل، يفضل حذف المستخدم من Auth لضمان نظافة البيانات
+    // تراجع (Rollback): حذف المستخدم إذا فشل إنشاء الملف الشخصي
     await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
     return { success: false, error: profileError.message }
   }

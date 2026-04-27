@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 1. إعدادات الصور (ضرورية جداً لعمل الموقع دون انهيار)
+  // تفعيل Server Actions بشكل صريح لتجاوز خطأ الـ Build
+  experimental: {
+    serverActions: true,
+  },
+  // إعدادات الصور لضمان عدم انهيار الموقع عند العرض
   images: {
     remotePatterns: [
       {
@@ -9,23 +13,9 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '**.supabase.co', // لدعم صور منصة سوبابيس الخاصة بك
+        hostname: '**.supabase.co', 
       },
     ],
-  },
-
-  // 2. تفعيل Server Actions (فقط إذا كانت نسختك أقدم من 14)
-  // إذا كنت على الإصدار 14 أو 15، يمكنك حذف هذا القسم تماماً
-  /*
-  experimental: {
-    serverActions: true,
-  },
-  */
-  
-  // 3. تحسينات الإنتاج (اختياري)
-  typescript: {
-    // تجاهل أخطاء التايب سكريبت عند الـ Build إذا كنت مستعجلاً (لا ينصح به دائماً)
-    ignoreBuildErrors: false, 
   },
 };
 
