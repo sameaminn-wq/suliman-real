@@ -5,7 +5,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 /**
- * دالة إضافة موظف جديد - سليمان للعقارات
+ * دالة إضافة موظف جديد -- سليمان للعقارات
  * تضمن التحقق من هوية الأدمن قبل التنفيذ
  */
 export async function addStaffAction(formData: { email: string, full_name: string, role: string }) {
