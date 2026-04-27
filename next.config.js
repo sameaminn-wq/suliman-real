@@ -17,7 +17,7 @@ const nextConfig = {
   },
 
   // تحسينات الاستقرار
-  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصفح
+  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصwفح
   swcMinify: true,
 };
 
