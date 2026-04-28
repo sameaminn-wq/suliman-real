@@ -1,3 +1,4 @@
+import Image from 'next/image'; // استيراد المكون المحسن
 import { MapPin, Maximize, BedDouble, Bath } from 'lucide-react';
 
 interface PropertyProps {
@@ -13,13 +14,17 @@ interface PropertyProps {
 export default function PropertyCard({ title, price, location, area, rooms, image, type }: PropertyProps) {
   return (
     <div className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100">
+      {/* Container الصورة مع الحفاظ على الأبعاد */}
       <div className="relative h-72 overflow-hidden">
-        <img 
-          src={image} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-          alt={title} 
+        <Image 
+          src={image || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1000'} 
+          alt={title}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-700"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          // التحميل هنا Lazy افتراضياً وهو ممتاز للمصفوفات الكبيرة
         />
-        <div className="absolute top-5 left-5 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-[#0F172A]">
+        <div className="absolute top-5 left-5 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-[#0F172A] z-10">
           {type}
         </div>
       </div>
@@ -27,7 +32,7 @@ export default function PropertyCard({ title, price, location, area, rooms, imag
       <div className="p-7">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-xl font-bold text-[#0F172A] leading-tight flex-1">{title}</h3>
-          <span className="text-[#10B981] font-bold text-lg">{price} ج.م</span>
+          <span className="text-[#10B981] font-bold text-lg whitespace-nowrap mr-2">{price} ج.م</span>
         </div>
         
         <div className="flex items-center text-gray-400 text-sm mb-6">

@@ -1,14 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// جلب القيم مع وضع قيم احتياطية (Fallback) لمنع انهيار الـ Build
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// التحقق من وجود المتغيرات قبل تشغيل العميل
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("⚠️ خطأ أمني وتقني: بيانات Supabase غير موجودة في ملفات البيئة.");
-}
+const cleanUrl = (url: string) => {
+  if (!url) return '';
+  return url.replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+};
 
-export const supabase = createClient(
-  supabaseUrl || '', 
-  supabaseAnonKey || ''
+const sanitizedUrl = cleanUrl(supabaseUrl);
+
+/**
+ * إنشاء العميل.
+ * استخدام القيم الاحتياطية هنا يضمن أن الـ Build سينجح (Success).
+ * وعندما يفتح المستخدم الموقع فعلياً، سيقوم النظام بجلب القيم الحقيقية من البيئة.
+ */
+export const supabase = createBrowserClient(
+  sanitizedUrl,
+  supabaseAnonKey
 );

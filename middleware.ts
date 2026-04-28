@@ -1,43 +1,58 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
-  });
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options: CookieOptions) {
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          response.cookies.set({ name, value: '', ...options });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
         },
       },
     }
-  );
+  )
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // التحقق من هوية المستخدم بشكل آمن من السيرفر
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // الحماية الذكية:
-  // إذا حاول شخص دخول لوحة التحكم وهو غير مسجل، سنرسله إلى البوابة السرية الجديدة
-  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/same-2029', request.url));
+  // مسار لوحة التحكم
+  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
+  const isAdmin = request.nextUrl.pathname.startsWith('/admin')
+  const isLoginPage = request.nextUrl.pathname === '/same-2090'
+
+  // إذا كان المستخدم غير مسجل دخول ويحاول دخول منطقة محمية
+  if (!user && (isDashboard || isAdmin)) {
+    return NextResponse.redirect(new URL('/same-2090', request.url))
   }
 
-  return response;
+  // إذا كان مسجل دخول ويحاول الذهاب لصفحة تسجيل الدخول مرة أخرى
+  if (user && isLoginPage) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  return response
 }
 
 export const config = {
-  // يراقب لوحة التحكم وأي محاولة دخول للإدارة
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
-};
+  matcher: [
+    // تشغيل الميدلوير على كل المسارات ما عدا الصور والملفات الثابتة
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
