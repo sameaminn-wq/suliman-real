@@ -1,23 +1,28 @@
 import Sidebar from '@/components/Sidebar';
 import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation'; // ضروري للتوجيه
+import { revalidatePath } from 'next/cache'; // ضروري لتحديث البيانات فوراً
 import { 
   Building2, MapPin, ImageIcon, 
   Save, AlignRight 
 } from 'lucide-react';
-// ملاحظة: قمنا بإزالة 'use client' و useState و useRouter لأننا الآن في Server Component
 
 export default async function NewPropertyPage() {
-  // إنشاء نسخة السيرفر
+  // إنشاء نسخة السيرفر للتحقق من الصلاحيات قبل عرض الصفحة
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // دالة التعامل مع إرسال البيانات باستخدام Server Actions (أفضل للأمان والأداء)
+  // حماية الصفحة: إذا لم يكن هناك مستخدم، ارجعه لصفحة الدخول
+  if (!user) {
+    redirect('/login');
+  }
+
   async function addProperty(formData: FormData) {
     'use server';
     
     const supabase = await createClient();
-    
-    // جلب بيانات المستخدم الحالي للأمان
     const { data: { user } } = await supabase.auth.getUser();
+    
     if (!user) return;
 
     const rawFormData = {
@@ -41,7 +46,12 @@ export default async function NewPropertyPage() {
 
     if (error) {
       console.error('Error adding property:', error.message);
+      return;
     }
+
+    // --- التعديل الضروري هنا ---
+    revalidatePath('/dashboard'); // يخبر Next.js أن البيانات تغيرت، حدث الشاشة
+    redirect('/dashboard'); // ينقل المستخدم بعد النجاح
   }
 
   return (

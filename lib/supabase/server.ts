@@ -1,26 +1,28 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
-  const cookieStore = await cookies() // ننتظر الكوكيز لتفتح لنا الباب
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        // نستخدم getAll بدلاً من get الفردية للتوافق مع المعايير الجديدة
+        getAll() {
+          return cookieStore.getAll()
         },
-        set(name: string, value: string, options: CookieOptions) {
+        // نستخدم setAll لضمان تمرير كافة الكوكيز دفعة واحدة للسيرفر
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) { /* تجاهل في السيرفر */ }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) { /* تجاهل في السيرفر */ }
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // تجاهل الخطأ: يحدث هذا عندما يتم استدعاء الدالة من Server Component
+            // حيث لا يمكن تعديل الكوكيز بعد بدء إرسال الاستجابة
+          }
         },
       },
     }
