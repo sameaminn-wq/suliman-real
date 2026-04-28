@@ -1,24 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // تفعيل Server Actions
-  experimental: {
-    serverActions: true,
-  },
-
-  // إعدادات الصور المحسنة لبيئة StackBlitz
+  // ملاحظة: serverActions و swcMinify مفعلة تلقائياً في إصدار 16 ولا داعي لكتابتها
+  
   images: {
-    unoptimized: true, // أضفت هذا السطر لحل مشكلة الـ 404 التي ظهرت لك
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: '**', // يفضل لاحقاً تحديد دومين Supabase لزيادة الأمان
       },
     ],
   },
 
-  // تحسينات الاستقرار
-  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصwفح
-  swcMinify: true,
+  reactStrictMode: false, 
 };
 
 module.exports = nextConfig;

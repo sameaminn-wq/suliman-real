@@ -1,22 +1,39 @@
-import { createBrowserClient } from '@supabase/ssr';
+// lib/supabase.ts
+import { createServerClient } from '@supabase/ssr'
+import { createBrowserClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-// جلب القيم مع وضع قيم احتياطية (Fallback) لمنع انهيار الـ Build
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
+// عميل مخصص لـ Server Components و Server Actions
+export async function createClient() {
+  const cookieStore = await cookies()
 
-const cleanUrl = (url: string) => {
-  if (!url) return '';
-  return url.replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
-};
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch (err) {
+            // يتم تجاهل الخطأ هنا إذا تم الاستدعاء من Server Component
+            // حيث لا يمكن تعديل الكوكيز أثناء الرندرة
+          }
+        },
+      },
+    }
+  )
+}
 
-const sanitizedUrl = cleanUrl(supabaseUrl);
-
-/**
- * إنشاء العميل.
- * استخدام القيم الاحتياطية هنا يضمن أن الـ Build سينجح (Success).
- * وعندما يفتح المستخدم الموقع فعلياً، سيقوم النظام بجلب القيم الحقيقية من البيئة.
- */
-export const supabase = createBrowserClient(
-  sanitizedUrl,
-  supabaseAnonKey
-);
+// عميل مخصص لـ Client Components
+export function createBrowserSupabaseClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
