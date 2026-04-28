@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-// نستخدم نسخة العميل هنا لأننا داخل 'use client' ولأداء عمليات التفاعل
+// تم التعديل: نستخدم نسخة العميل هنا لأننا داخل 'use client'
 import { supabase } from '@/lib/supabase';
 import { Loader2, MapPin, Save } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -29,10 +29,12 @@ export default function AddPropertyPage() {
 
     try {
       // 1. جلب بيانات المستخدم الحالي لربطه بالعقار (أمان)
+      // تم التعديل: نستخدم المستورد 'supabase' مباشرة دون تعريف محلي
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         toast.error('يجب تسجيل الدخول أولاً');
+        setLoading(false);
         return;
       }
 

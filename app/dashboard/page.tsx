@@ -1,77 +1,48 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
-// تم استيراد السيرفر كلاينت هنا
-import { createClient } from '@/lib/supabase/server'; 
+import { createClient } from '@/lib/supabase/server';
 import { 
   Building2, MapPin, ImageIcon, 
-  Loader2, Save, AlignRight, 
-  CheckCircle, AlertTriangle 
+  Save, AlignRight 
 } from 'lucide-react';
+// ملاحظة: قمنا بإزالة 'use client' و useState و useRouter لأننا الآن في Server Component
 
-export default function NewPropertyPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    location: '',
-    price: '',
-    area: '',
-    rooms: '',
-    bathrooms: '',
-    type: 'شقة',
-    description: '',
-    image_url: ''
-  });
+export default async function NewPropertyPage() {
+  // إنشاء نسخة السيرفر
+  const supabase = await createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
+  // دالة التعامل مع إرسال البيانات باستخدام Server Actions (أفضل للأمان والأداء)
+  async function addProperty(formData: FormData) {
+    'use server';
+    
+    const supabase = await createClient();
+    
+    // جلب بيانات المستخدم الحالي للأمان
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    setLoading(true);
+    const rawFormData = {
+      title: formData.get('title') as string,
+      location: formData.get('location') as string,
+      price: parseFloat(formData.get('price') as string) || 0,
+      area: parseFloat(formData.get('area') as string) || 0,
+      rooms: parseInt(formData.get('rooms') as string) || 0,
+      bathrooms: parseInt(formData.get('bathrooms') as string) || 0,
+      type: formData.get('type') as string,
+      description: formData.get('description') as string,
+      image_url: formData.get('image_url') as string || null,
+      status: 'available',
+      created_by: user.id,
+      created_at: new Date().toISOString(),
+    };
 
-    try {
-      // إنشاء نسخة الكلاينت المتوافقة مع إعدادات السيرفر
-      const supabase = createClient(); 
+    const { error } = await supabase
+      .from('properties')
+      .insert([rawFormData]);
 
-      const cleanData = {
-        title: formData.title.trim(),
-        location: formData.location.trim(),
-        price: parseFloat(formData.price) || 0,
-        area: parseFloat(formData.area) || 0,
-        rooms: parseInt(formData.rooms) || 0,
-        bathrooms: parseInt(formData.bathrooms) || 0,
-        type: formData.type,
-        description: formData.description.trim(),
-        image_url: formData.image_url.trim() || null,
-        status: 'available',
-        created_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('properties')
-        .insert([cleanData]);
-
-      if (error) throw error;
-
-      setSuccess(true);
-      setTimeout(() => {
-        router.push('/dashboard');
-        router.refresh();
-      }, 1500);
-
-    } catch (error: any) {
-      console.error('Submission Error:', error.message);
-      alert('حدث خطأ في النظام: ' + error.message);
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error('Error adding property:', error.message);
     }
-  };
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
@@ -84,40 +55,21 @@ export default function NewPropertyPage() {
               <h1 className="text-3xl font-black text-[#0F172A] tracking-tight">إضافة وحدة عقارية</h1>
               <p className="text-gray-500 mt-2 text-lg">أدخل البيانات الفنية للوحدة ليتم أرشفتها في النظام</p>
             </div>
-            {success && (
-              <div className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-6 py-3 rounded-2xl font-bold animate-bounce">
-                <CheckCircle size={20} /> تم الحفظ بنجاح
-              </div>
-            )}
           </header>
 
-          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50">
+          <form action={addProperty} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50">
             
-            {formData.image_url && (
-              <div className="relative w-full h-64 rounded-[2rem] overflow-hidden border-4 border-emerald-50 shadow-inner">
-                <Image 
-                  src={formData.image_url} 
-                  alt="معاينة الوحدة" 
-                  fill 
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 800px"
-                  unoptimized 
-                />
-              </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-sm font-black text-[#0F172A] mr-1">مسمى الوحدة</label>
                 <div className="relative">
                   <Building2 className="absolute right-4 top-4 text-gray-300" size={20} />
                   <input 
+                    name="title"
                     required
                     type="text"
                     placeholder="مثال: فيلا الياسمين - التجمع الخامس"
                     className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] outline-none transition-all font-medium"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
                   />
                 </div>
               </div>
@@ -127,12 +79,11 @@ export default function NewPropertyPage() {
                 <div className="relative">
                   <MapPin className="absolute right-4 top-4 text-gray-300" size={20} />
                   <input 
+                    name="location"
                     required
                     type="text"
                     placeholder="المدينة، الحي، الشارع"
                     className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] outline-none transition-all font-medium"
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
                   />
                 </div>
               </div>
@@ -140,21 +91,20 @@ export default function NewPropertyPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { label: 'السعر (ج.م)', key: 'price', placeholder: '0.00' },
-                { label: 'المساحة (م²)', key: 'area', placeholder: '0' },
-                { label: 'غرف النوم', key: 'rooms', placeholder: '0' },
-                { label: 'الحمامات', key: 'bathrooms', placeholder: '0' }
+                { label: 'السعر (ج.م)', name: 'price', placeholder: '0.00' },
+                { label: 'المساحة (م²)', name: 'area', placeholder: '0' },
+                { label: 'غرف النوم', name: 'rooms', placeholder: '0' },
+                { label: 'الحمامات', name: 'bathrooms', placeholder: '0' }
               ].map((item) => (
-                <div key={item.key} className="space-y-3">
+                <div key={item.name} className="space-y-3">
                   <label className="text-sm font-black text-[#0F172A] mr-1">{item.label}</label>
                   <input 
+                    name={item.name}
                     required 
                     type="number" 
                     min="0"
                     placeholder={item.placeholder}
                     className="w-full p-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] font-bold text-[#10B981]" 
-                    value={(formData as any)[item.key]}
-                    onChange={(e) => setFormData({...formData, [item.key]: e.target.value})} 
                   />
                 </div>
               ))}
@@ -164,9 +114,8 @@ export default function NewPropertyPage() {
               <div className="space-y-3">
                 <label className="text-sm font-black text-[#0F172A] mr-1">نوع العقار</label>
                 <select 
+                  name="type"
                   className="w-full p-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] font-medium appearance-none"
-                  value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
                 >
                   <option value="شقة">شقة سكنية</option>
                   <option value="فيلا">فيلا / قصر</option>
@@ -180,11 +129,10 @@ export default function NewPropertyPage() {
                 <div className="relative">
                   <ImageIcon className="absolute right-4 top-4 text-gray-300" size={20} />
                   <input 
+                    name="image_url"
                     type="url"
                     placeholder="https://images.unsplash.com/..."
                     className="w-full pr-12 pl-6 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981]"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
                   />
                 </div>
               </div>
@@ -195,33 +143,19 @@ export default function NewPropertyPage() {
               <div className="relative">
                 <AlignRight className="absolute right-4 top-4 text-gray-300" size={20} />
                 <textarea 
+                  name="description"
                   rows={4}
                   placeholder="اكتب مميزات العقار، التشطيب، والخدمات القريبة..."
                   className="w-full pr-12 pl-6 py-4 rounded-3xl border border-gray-100 bg-gray-50/50 outline-none focus:ring-4 focus:ring-[#10B981]/10 focus:border-[#10B981] transition-all resize-none font-medium"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
                 />
               </div>
             </div>
 
             <button 
-              disabled={loading || success}
               type="submit"
-              className={`
-                w-full py-5 rounded-[2rem] font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl
-                ${success 
-                  ? 'bg-emerald-500 text-white shadow-emerald-200' 
-                  : 'bg-[#0F172A] text-white hover:bg-[#1e293b] shadow-gray-200'}
-                disabled:opacity-70 disabled:cursor-not-allowed
-              `}
+              className="w-full py-5 rounded-[2rem] font-black text-xl bg-[#0F172A] text-white hover:bg-[#1e293b] shadow-xl transition-all flex items-center justify-center gap-3"
             >
-              {loading ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : success ? (
-                <><CheckCircle size={24}/> تم النشر بنجاح</>
-              ) : (
-                <><Save size={24}/> اعتماد ونشر الوحدة</>
-              )}
+              <Save size={24}/> اعتماد ونشر الوحدة
             </button>
           </form>
         </div>
