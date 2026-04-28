@@ -29,17 +29,24 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // التحقق من هوية المستخدم بشكل آمن من السيرفر
-  const { data: { user } } = await supabase.auth.getUser()
+  // 1. جلب الجلسة (Session) بدلاً من المستخدم فقط، لأن الجلسة أسرع في التحديث
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
 
-  // مسار لوحة التحكم
   const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
   const isAdmin = request.nextUrl.pathname.startsWith('/admin')
   const isLoginPage = request.nextUrl.pathname === '/same-2090'
 
-  // إذا كان المستخدم غير مسجل دخول ويحاول دخول منطقة محمية
+  // 2. تعديل شرط الطرد: 
+  // إذا لم يجد مستخدم وكان يحاول دخول الداشبورد، نتحقق مرة أخرى من الكوكيز الخام في الطلب
+  // كحماية إضافية ضد أخطاء التزامن (Race Condition)
   if (!user && (isDashboard || isAdmin)) {
-    return NextResponse.redirect(new URL('/same-2090', request.url))
+    const hasSessionCookie = request.cookies.get('sb-access-token') || request.cookies.get('supabase-auth-token')
+    
+    // إذا لم يجد مستخدم فعلي ولا يوجد حتى كوكيز أولية، هنا فقط نقوم بالطرد
+    if (!hasSessionCookie) {
+      return NextResponse.redirect(new URL('/same-2090', request.url))
+    }
   }
 
   // إذا كان مسجل دخول ويحاول الذهاب لصفحة تسجيل الدخول مرة أخرى
@@ -52,7 +59,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // تشغيل الميدلوير على كل المسارات ما عدا الصور والملفات الثابتة
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
