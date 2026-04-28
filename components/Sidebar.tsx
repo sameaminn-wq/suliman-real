@@ -11,12 +11,13 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { signOutAction } from '@/app/actions/auth'; // استيراد الأكشن الآمن
+import { signOutAction } from '@/app/actions/auth';
 
+// تعريف الأنواع بدقة
 type Role = 'ADMIN' | 'SECRETARY' | 'EMPLOYEE';
 
 interface SidebarProps {
-  role?: Role;
+  role: Role; // إزالة الـ '?' لجعل الدور إجبارياً من الأب
 }
 
 const menuItems = [
@@ -52,18 +53,16 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
+export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
 
   const handleLogout = async () => {
     const loadingToast = toast.loading('جاري تسجيل الخروج آمنياً...');
     try {
-      // تنفيذ تسجيل الخروج من خلال السيرفر لمسح الكوكيز والجلسة نهائياً
       await signOutAction();
       toast.success('تم تسجيل الخروج بنجاح', { id: loadingToast });
     } catch (error: any) {
       toast.error('حدث خطأ أثناء محاولة الخروج', { id: loadingToast });
-      console.error('Logout error:', error.message);
     }
   };
 
@@ -81,6 +80,7 @@ export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
       <nav className="flex-1 space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = pathname === item.path;
+          // التحقق الصارم من الصلاحية
           const hasAccess = item.access.includes(role);
 
           if (!hasAccess) return null;
@@ -107,6 +107,10 @@ export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
       </nav>
 
       <div className="mt-auto border-t border-white/5 pt-6">
+        <div className="mb-4 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+          <p className="text-xs text-gray-500 mb-1">دخول بصلاحية:</p>
+          <p className="text-sm font-semibold text-[#10B981]">{role}</p>
+        </div>
         <button 
           onClick={handleLogout}
           className="flex items-center gap-4 p-4 w-full text-red-400 hover:bg-red-500/10 rounded-2xl transition-all group"
