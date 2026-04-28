@@ -2,20 +2,19 @@
 
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase'; 
-import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     
-    // التحقق الأساسي من الحقول
     if (!email || !password) {
       toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       setLoading(false);
@@ -23,32 +22,29 @@ export default function LoginPage() {
     }
 
     try {
-      // محاولة تسجيل الدخول عبر Supabase
-      const { error } = await supabase.auth.signInWithPassword({
+      // محاولة تسجيل الدخول
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(), 
         password: password,
       });
 
       if (error) {
-        // التعامل مع أخطاء الدخول
         if (error.message.includes('Invalid login credentials')) {
           toast.error('بيانات الدخول غير صحيحة، يرجى التحقق');
         } else {
           toast.error(error.message);
         }
         setLoading(false);
-      } else {
-        // 🔥 الحكم النهائي: نجاح الدخول مع تحسين الأداء لـ StackBlitz
-        toast.success('تم التحقق بنجاح!');
-        
-        // إعادة حالة الزر فوراً
-        setLoading(false);
+      } else if (data?.session) {
+        // نجاح الدخول
+        toast.success('تم التحقق.. جاري الدخول للوحة التحكم');
 
-        // تأخير بسيط (200ms) لضمان استقرار الكوكيز قبل التوجيه
+        // التعديل التقني هنا:
+        // ننتظر 500ms لضمان استقرار الكوكيز في المتصفح والـ Middleware
+        // ونستخدم window.location.assign لعمل إعادة تحميل كاملة تضمن وصول الكوكيز للسيرفر
         setTimeout(() => {
-          router.replace('/dashboard');
-          router.refresh();
-        }, 200);
+          window.location.assign('/dashboard');
+        }, 500);
       }
     } catch (err) {
       toast.error('حدث خطأ غير متوقع في الاتصال');
