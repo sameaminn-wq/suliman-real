@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // استيراد المكون المحسن
+import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
-import { supabase } from '@/lib/supabase';
+// تم استيراد السيرفر كلاينت هنا
+import { createClient } from '@/lib/supabase/client'; 
 import { 
   Building2, MapPin, ImageIcon, 
   Loader2, Save, AlignRight, 
@@ -35,6 +36,9 @@ export default function NewPropertyPage() {
     setLoading(true);
 
     try {
+      // إنشاء نسخة الكلاينت المتوافقة مع إعدادات السيرفر
+      const supabase = createClient(); 
+
       const cleanData = {
         title: formData.title.trim(),
         location: formData.location.trim(),
@@ -89,7 +93,6 @@ export default function NewPropertyPage() {
 
           <form onSubmit={handleSubmit} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-50">
             
-            {/* عرض معاينة الصورة - تحسين أداء وتجربة مستخدم */}
             {formData.image_url && (
               <div className="relative w-full h-64 rounded-[2rem] overflow-hidden border-4 border-emerald-50 shadow-inner">
                 <Image 
@@ -98,7 +101,7 @@ export default function NewPropertyPage() {
                   fill 
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 800px"
-                  unoptimized // نستخدمها هنا لأن الرابط خارجي ومباشر من المستخدم
+                  unoptimized 
                 />
               </div>
             )}
