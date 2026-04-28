@@ -1,13 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // تفعيل Server Actions
-  experimental: {
-    serverActions: true,
-  },
+  // ملاحظة: تم إزالة serverActions لأنها أصبحت مفعلة تلقائياً في الإصدارات الحديثة
+  // ومحاولة تفعيلها يدوياً بقيمة true تسبب الخطأ الذي ظهر لك.
 
-  // إعدادات الصور المحسنة لبيئة StackBlitz
   images: {
-    unoptimized: true, // أضفت هذا السطر لحل مشكلة الـ 404 التي ظهرت لك
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,9 +13,11 @@ const nextConfig = {
     ],
   },
 
-  // تحسينات الاستقرار
-  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصwفح
-  swcMinify: true,
+  // تحسينات الاستقرار لبيئة StackBlitz
+  reactStrictMode: false, 
+
+  /* تم إزالة swcMinify لأنه أصبح الخيار الافتراضي والوحيد في الإصدارات الجديدة
+     ووجوده كخيار يدوي يسبب تحذير "Unrecognized key". */
 };
 
 module.exports = nextConfig;
