@@ -1,86 +1,106 @@
-// 1. تأكد من عدم وجود 'use client' نهائياً في أول سطر
-import Sidebar from '@/components/Sidebar';
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { DollarSign, Home, Users, TrendingUp } from 'lucide-react';
+'use client';
 
-// 2. إجبار الصفحة على العمل كـ Server Component ديناميكي 100%
-export const dynamic = 'force-dynamic';
+import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase'; 
+import toast, { Toaster } from 'react-hot-toast';
 
-export default async function Dashboard() {
-  // 3. السطر 11 المسبب للمشكلة: استدعاء async مع await داخل الدالة حصراً
-  const supabase = await createClient();
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // 4. التحقق من المستخدم لضمان وجود الجلسة قبل عرض البيانات
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
 
-  if (error || !user) {
-    redirect('/same-2090'); // توجيه فوري إذا لم تكن هناك جلسة
-  }
+    setLoading(true);
+    
+    if (!email || !password) {
+      toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      setLoading(false);
+      return;
+    }
 
-  const stats = [
-    { title: 'إجمالي المبيعات', value: '45,200,000 ج.م', icon: DollarSign, color: 'bg-blue-500' },
-    { title: 'الوحدات المتاحة', value: '128', icon: Home, color: 'bg-[#10B981]' },
-    { title: 'العملاء النشطين', value: '1,420', icon: Users, color: 'bg-purple-500' },
-    { title: 'نسبة النمو', value: '+18%', icon: TrendingUp, color: 'bg-orange-500' },
-  ];
+    try {
+      // محاولة تسجيل الدخول
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(), 
+        password: password,
+      });
+
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('بيانات الدخول غير صحيحة، يرجى التحقق');
+        } else {
+          toast.error(error.message);
+        }
+        setLoading(false);
+      } else if (data?.session) {
+        // نجاح الدخول
+        toast.success('تم التحقق.. جاري الدخول للوحة التحكم');
+
+        // التعديل التقني هنا:
+        // ننتظر 500ms لضمان استقرار الكوكيز في المتصفح والـ Middleware
+        // ونستخدم window.location.assign لعمل إعادة تحميل كاملة تضمن وصول الكوكيز للسيرفر
+        setTimeout(() => {
+          window.location.assign('/dashboard');
+        }, 500);
+      }
+    } catch (err) {
+      toast.error('حدث خطأ غير متوقع في الاتصال');
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
-      <Sidebar role="ADMIN" />
-      
-      <main className="mr-72 flex-1 p-10">
-        <header className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-[#0F172A]">نظرة عامة</h1>
-            <p className="text-gray-500 mt-1">مرحباً بك، سيد سليمان. إليك آخر مستجدات العمل اليوم.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-left ml-4 text-left">
-              <p className="text-sm font-bold text-[#0F172A]">{user.email?.split('@')[0]}</p>
-              <p className="text-xs text-[#10B981]">المدير التنفيذي</p>
-            </div>
-            <div className="w-12 h-12 bg-gray-200 rounded-2xl overflow-hidden">
-               <img src={`https://ui-avatars.com/api/?name=${user.email}&background=10B981&color=fff`} alt="User" />
-            </div>
-          </div>
-        </header>
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <Toaster position="top-center" reverseOrder={false} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((s, i) => (
-            <div key={i} className="bg-white p-7 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className={`${s.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-gray-100`}>
-                <s.icon size={24} />
-              </div>
-              <p className="text-gray-400 text-sm font-medium">{s.title}</p>
-              <h3 className="text-2xl font-bold text-[#0F172A] mt-1">{s.value}</h3>
-            </div>
-          ))}
+      <div className="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-gray-200/50 w-full max-w-md border border-gray-100">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-black text-[#0F172A]">
+            سليمان <span className="text-[#10B981]">للعقارات</span>
+          </h1>
+          <p className="text-gray-400 text-sm mt-2 font-medium">بوابة الإدارة الذكية</p>
         </div>
-
-        <div className="mt-12 bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-          <h2 className="text-xl font-bold mb-8 text-[#0F172A]">أحدث الوحدات في السوق</h2>
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gray-100 rounded-xl overflow-hidden">
-                    <img src={`https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=100`} alt="prop" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#0F172A]">بنتهاوس زايد الجديدة</p>
-                    <p className="text-xs text-gray-400">منذ ساعتين • بواسطة الموظف</p>
-                  </div>
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-[#10B981]">8,200,000 ج.م</p>
-                  <p className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full inline-block mt-1">نشط</p>
-                </div>
-              </div>
-            ))}
+        
+        <form onSubmit={handleLogin} className="space-y-6 text-right" dir="rtl">
+          <div className="space-y-2">
+            <label className="block text-sm font-black mr-1 text-gray-700">البريد الإلكتروني</label>
+            <input 
+              type="email" 
+              className="w-full p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-[#10B981] outline-none transition-all text-right font-medium"
+              placeholder="mail@soliman.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
-        </div>
-      </main>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-black mr-1 text-gray-700">كلمة المرور</label>
+            <input 
+              type="password" 
+              className="w-full p-4 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-[#10B981] outline-none transition-all text-right font-medium"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`
+              w-full py-4 rounded-2xl font-black text-lg transition-all shadow-lg 
+              ${loading ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-[#0F172A] hover:bg-[#1E293B] text-white shadow-gray-200'}
+            `}
+          >
+            {loading ? 'جاري التحقق من الهوية...' : 'تسجيل الدخول'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
