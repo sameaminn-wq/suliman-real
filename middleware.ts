@@ -1,50 +1,58 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+    request: {
+      headers: request.headers,
+    },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return request.cookies.get(name)?.value; },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
-          response.cookies.set({ name, value, ...options });
+        getAll() {
+          return request.cookies.getAll()
         },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options });
-          response = NextResponse.next({ request: { headers: request.headers } });
-          response.cookies.set({ name, value: '', ...options });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
         },
       },
     }
-  );
+  )
 
-  // استخدام getSession لسرعة الاستجابة ومنع الوميض
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  // التحقق من هوية المستخدم بشكل آمن من السيرفر
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const loginPath = '/same-2090';
-  const isProtectedPath = request.nextUrl.pathname.startsWith('/dashboard') || 
-                          request.nextUrl.pathname.startsWith('/admin');
+  // مسار لوحة التحكم
+  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
+  const isAdmin = request.nextUrl.pathname.startsWith('/admin')
+  const isLoginPage = request.nextUrl.pathname === '/same-2090'
 
-  if (!user && isProtectedPath) {
-    return NextResponse.redirect(new URL(loginPath, request.url));
+  // إذا كان المستخدم غير مسجل دخول ويحاول دخول منطقة محمية
+  if (!user && (isDashboard || isAdmin)) {
+    return NextResponse.redirect(new URL('/same-2090', request.url))
   }
 
-  if (user && request.nextUrl.pathname === loginPath) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // إذا كان مسجل دخول ويحاول الذهاب لصفحة تسجيل الدخول مرة أخرى
+  if (user && isLoginPage) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  return response;
+  return response
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/same-2090'],
-};
+  matcher: [
+    // تشغيل الميدلوير على كل المسارات ما عدا الصور والملفات الثابتة
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}

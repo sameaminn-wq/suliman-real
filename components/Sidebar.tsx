@@ -9,9 +9,9 @@ import {
   Building2
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation'; // أضفنا useRouter
-import { supabase } from '@/lib/supabase'; // تأكد من مسار السوبا بيس لديك
+import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { signOutAction } from '@/app/actions/auth'; // استيراد الأكشن الآمن
 
 type Role = 'ADMIN' | 'SECRETARY' | 'EMPLOYEE';
 
@@ -54,28 +54,21 @@ const menuItems = [
 
 export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter(); // لتمكين التنقل البرمجي
 
-  // دالة تسجيل الخروج
   const handleLogout = async () => {
+    const loadingToast = toast.loading('جاري تسجيل الخروج آمنياً...');
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast.success('تم تسجيل الخروج بنجاح');
-      
-      // توجيه المستخدم لصفحة تسجيل الدخول
-      router.push('/login'); 
-      router.refresh(); // لضمان مسح أي بيانات مخزنة في الكاش
+      // تنفيذ تسجيل الخروج من خلال السيرفر لمسح الكوكيز والجلسة نهائياً
+      await signOutAction();
+      toast.success('تم تسجيل الخروج بنجاح', { id: loadingToast });
     } catch (error: any) {
-      toast.error('حدث خطأ أثناء تسجيل الخروج');
-      console.error(error.message);
+      toast.error('حدث خطأ أثناء محاولة الخروج', { id: loadingToast });
+      console.error('Logout error:', error.message);
     }
   };
 
   return (
     <div className="w-72 bg-[#0F172A] min-h-screen text-white p-6 flex flex-col fixed right-0 top-0 border-l border-white/5 z-50">
-      {/* Logo Section */}
       <div className="flex items-center gap-3 mb-12 px-2">
         <div className="w-8 h-8 bg-[#10B981] rounded-lg flex items-center justify-center shadow-lg shadow-[#10B981]/20">
           <Building2 size={18} className="text-white" />
@@ -85,7 +78,6 @@ export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
         </span>
       </div>
 
-      {/* Navigation Menu */}
       <nav className="flex-1 space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = pathname === item.path;
@@ -114,10 +106,9 @@ export default function Sidebar({ role = 'ADMIN' }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer Section */}
       <div className="mt-auto border-t border-white/5 pt-6">
         <button 
-          onClick={handleLogout} // ربط الدالة هنا
+          onClick={handleLogout}
           className="flex items-center gap-4 p-4 w-full text-red-400 hover:bg-red-500/10 rounded-2xl transition-all group"
         >
           <LogOut size={22} className="group-hover:translate-x-1 transition-transform" />
