@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
-import { supabase } from '@/lib/supabase';
+// تم تعديل الاستيراد لاستخدام نسخة الكلاينت المتوافقة مع السيرفر
+import { createClient } from '@/lib/supabase/client'; 
 import { 
   Phone, 
   MessageSquare, 
@@ -15,7 +16,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// تعريف هيكل بيانات العميل لضمان أمن الكود
 interface Customer {
   id: string;
   full_name: string;
@@ -30,10 +30,11 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // دالة جلب البيانات مع معالجة الأخطاء بشكل احترافي
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
+      // إنشاء الكلاينت داخل الدالة لضمان أمان الاتصال
+      const supabase = createClient();
       const { data, error } = await supabase
         .from('customers')
         .select('*')
@@ -53,10 +54,8 @@ export default function CustomersPage() {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // تنظيف رقم الهاتف للروابط الخارجية
   const cleanPhone = (phone: string) => phone.replace(/\s+/g, '').replace('+', '');
 
-  // فلترة العملاء بالاسم أو الهاتف
   const filteredCustomers = customers.filter(c => 
     c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.phone.includes(searchTerm)
@@ -64,11 +63,9 @@ export default function CustomersPage() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
-      {/* القائمة الجانبية مع تمرير الدور المناسب */}
       <Sidebar role="SECRETARY" />
       
       <main className="mr-72 flex-1 p-10">
-        {/* الهيدر الإستراتيجي */}
         <div className="flex justify-between items-end mb-12">
           <div>
             <h1 className="text-3xl font-black text-[#0F172A] tracking-tight">إدارة العملاء المحتملين (Leads)</h1>
