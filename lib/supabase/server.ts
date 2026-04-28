@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
-  const cookieStore = await cookies() // ضروري جداً في النسخة 15
+  const cookieStore = await cookies()
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,8 +17,8 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {
-            // هذا السطر هو "المنقذ" الذي يمنع الـ Crash
+          } catch (err) {
+            // تجاهل الخطأ في السيرفر كومبوننت
           }
         },
       },
