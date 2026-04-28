@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export function createClient() {
-  const cookieStore = cookies()
+export async function createClient() {
+  const cookieStore = await cookies() // ضروري جداً في النسخة 15
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,14 +12,13 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll()
         },
-
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
+            cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
-            })
+            )
           } catch {
-            // طبيعي داخل Server Components
+            // هذا السطر هو "المنقذ" الذي يمنع الـ Crash
           }
         },
       },

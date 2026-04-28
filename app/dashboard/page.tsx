@@ -8,10 +8,12 @@ import {
   Save,
 } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // يضمن العمل في بيئة السيرفر الصحيحة
 
 export default async function NewPropertyPage() {
-  const supabase = createClient()
+  // السطر 14 يجب أن يكون هكذا:
+  const supabase = await createClient();
 
   // 1. جلب الجلسة للتأكد من تسجيل الدخول
   const { data: { session } } = await supabase.auth.getSession()
