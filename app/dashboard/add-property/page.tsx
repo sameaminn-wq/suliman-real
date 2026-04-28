@@ -1,163 +1,136 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+// تم التعديل: نستخدم نسخة العميل هنا لأننا داخل 'use client'
 import { supabase } from '@/lib/supabase';
-import { Building2, MapPin, ImageIcon, Loader2, Save } from 'lucide-react';
+import { Loader2, MapPin, Save } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
-export default function NewPropertyPage() {
+export default function AddPropertyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    location: '',
-    price: '',
-    area: '',
-    rooms: '',
-    bathrooms: '',
-    type: 'شقة',
-    description: '',
+    title: '', 
+    location: '', 
+    price: '', 
+    area: '', 
+    rooms: '', 
+    bathrooms: '', 
+    type: 'شقة', 
+    description: '', 
     image_url: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // حماية ضد النقر المتعدد
-
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('properties')
-        .insert([
-          { 
-            ...formData,
-            price: parseFloat(formData.price) || 0,
-            area: parseFloat(formData.area) || 0,
-            rooms: parseInt(formData.rooms) || 0,
-            bathrooms: parseInt(formData.bathrooms) || 0,
-            created_at: new Date().toISOString(), // تأمين وقت الإنشاء
-          }
-        ]);
+      // 1. جلب بيانات المستخدم الحالي لربطه بالعقار (أمان)
+      // تم التعديل: نستخدم المستورد 'supabase' مباشرة دون تعريف محلي
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error('يجب تسجيل الدخول أولاً');
+        setLoading(false);
+        return;
+      }
+
+      // 2. إرسال البيانات مع التأكد من مطابقة أسماء الأعمدة في الجدول
+      const { error } = await supabase.from('properties').insert([{
+        title: formData.title,
+        location: formData.location,
+        price: parseFloat(formData.price) || 0,
+        area: parseFloat(formData.area) || 0,
+        rooms: parseInt(formData.rooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        type: formData.type,
+        description: formData.description,
+        image_url: formData.image_url,
+        status: 'available', // العمود الذي أضفناه
+        created_by: user.id, // ربط العقار بالموظف/الآدمن الحالي
+        created_at: new Date().toISOString()
+      }]);
 
       if (error) throw error;
 
-      alert('✅ تم إضافة العقار بنجاح!');
-      router.push('/dashboard/properties'); 
-      router.refresh(); // لتحديث البيانات فوراً
+      toast.success('تم إضافة الوحدة بنجاح');
+      
+      // توجيه المستخدم بعد النجاح
+      setTimeout(() => {
+        router.push('/dashboard');
+        router.refresh();
+      }, 1500);
+
     } catch (error: any) {
-      alert('❌ خطأ في النظام: ' + error.message);
+      console.error('Save Error:', error.message);
+      toast.error('فشل في حفظ البيانات: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
-      {/* تأكد من أن الـ Sidebar يعكس الصلاحية الصحيحة، هنا استخدمنا ADMIN */}
+    <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
+      <Toaster position="top-center" />
       <Sidebar role="ADMIN" />
       
-      <main className="mr-72 flex-1 p-10 text-right" dir="rtl">
+      <main className="mr-72 flex-1 p-10">
         <div className="max-w-4xl mx-auto">
-          <header className="mb-10 flex justify-between items-end">
-            <div>
-              <h1 className="text-3xl font-bold text-[#0F172A]">إضافة وحدة جديدة</h1>
-              <p className="text-gray-500 mt-2">أدخل تفاصيل العقار بدقة لتظهر بشكل جذاب في المعرض</p>
-            </div>
-            <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold">
-              لوحة التحكم الآمنة
-            </div>
+          <header className="mb-10">
+            <h1 className="text-3xl font-black text-[#0F172A]">إضافة وحدة عقارية</h1>
+            <p className="text-gray-500 mt-2">أدخل البيانات الفنية للوحدة ليتم نشرها في المحفظة</p>
           </header>
 
-          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100">
-            
-            {/* عنوان العقار والموقع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-8 bg-white p-12 rounded-[3rem] shadow-xl border border-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">عنوان العقار</label>
-                <div className="relative">
-                  <Building2 className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="مثال: شقة دوبلكس بالتجمع"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  />
-                </div>
+                <label className="text-sm font-bold text-gray-700 mr-2">مسمى الوحدة</label>
+                <input required placeholder="مثال: فيلا ملكية بالتجمع" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
               </div>
-
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">الموقع</label>
-                <div className="relative">
-                  <MapPin className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    required
-                    type="text"
-                    placeholder="المدينة، الحي"
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#10B981] outline-none transition-all"
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  />
-                </div>
+                <label className="text-sm font-bold text-gray-700 mr-2">الموقع</label>
+                <input required placeholder="مثال: القاهرة الجديدة" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
               </div>
             </div>
 
-            {/* الأرقام الحساسة */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[
-                { label: 'السعر (ج.م)', key: 'price' },
-                { label: 'المساحة (م²)', key: 'area' },
-                { label: 'غرف النوم', key: 'rooms' },
-                { label: 'الحمامات', key: 'bathrooms' }
-              ].map((item) => (
-                <div key={item.key} className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">{item.label}</label>
-                  <input 
-                    required 
-                    type="number" 
-                    min="0"
-                    className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" 
-                    onChange={(e) => setFormData({...formData, [item.key]: e.target.value})} 
-                  />
-                </div>
-              ))}
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">السعر (ج.م)</label>
+                <input required type="number" className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">المساحة (م²)</label>
+                <input required type="number" className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">الغرف</label>
+                <input required type="number" className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.rooms} onChange={e => setFormData({...formData, rooms: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">الحمامات</label>
+                <input required type="number" className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.bathrooms} onChange={e => setFormData({...formData, bathrooms: e.target.value})} />
+              </div>
             </div>
 
-            {/* الصورة والنوع */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">نوع العقار</label>
-                <select 
-                  className="w-full p-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
-                >
-                  <option>شقة</option>
-                  <option>فيلا</option>
-                  <option>دوبلكس</option>
-                  <option>محل تجاري</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">رابط الصورة (URL)</label>
-                <div className="relative">
-                  <ImageIcon className="absolute right-4 top-3.5 text-gray-400" size={18} />
-                  <input 
-                    type="url" // تغيير النوع لـ url للتحقق التلقائي
-                    placeholder="https://..."
-                    className="w-full pr-12 py-3 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]"
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700 mr-2">وصف تفصيلي</label>
+              <textarea rows={4} className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700 mr-2">رابط صورة العقار</label>
+              <input placeholder="https://..." className="w-full p-4 rounded-2xl bg-gray-50 outline-none focus:ring-2 focus:ring-[#10B981]" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} />
             </div>
 
             <button 
-              disabled={loading}
-              type="submit"
-              className="w-full bg-[#10B981] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#059669] disabled:bg-gray-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
+              disabled={loading} 
+              type="submit" 
+              className="w-full py-5 rounded-[2rem] bg-[#0F172A] text-white font-black text-xl hover:bg-[#1e293b] transition-all flex justify-center items-center gap-3 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <><Save size={20}/> نشر العقار الآن</>}
+              {loading ? <Loader2 className="animate-spin" /> : <><Save size={24} /> اعتماد ونشر الوحدة</>}
             </button>
           </form>
         </div>

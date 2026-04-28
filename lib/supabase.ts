@@ -1,14 +1,39 @@
-import { createClient } from '@supabase/supabase-js';
+// lib/supabase.ts
+import { createServerClient } from '@supabase/ssr'
+import { createBrowserClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// عميل مخصص لـ Server Components و Server Actions
+export async function createClient() {
+  const cookieStore = await cookies()
 
-// التحقق من وجود المتغيرات قبل تشغيل العميل
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("⚠️ خطأ أمني وتقني: بيانات Supabase غير موجودة في ملفات البيئة.");
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch (err) {
+            // يتم تجاهل الخطأ هنا إذا تم الاستدعاء من Server Component
+            // حيث لا يمكن تعديل الكوكيز أثناء الرندرة
+          }
+        },
+      },
+    }
+  )
 }
 
-export const supabase = createClient(
-  supabaseUrl || '', 
-  supabaseAnonKey || ''
-);
+// عميل مخصص لـ Client Components
+export function createBrowserSupabaseClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}

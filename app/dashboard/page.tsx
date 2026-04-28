@@ -1,8 +1,24 @@
 import Sidebar from '@/components/Sidebar';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 import { DollarSign, Home, Users, TrendingUp } from 'lucide-react';
 
-export default function Dashboard() {
-  // بيانات محاكية للواقع
+// تكتيك الأمان القصوى: منع الرندرة الثابتة تماماً
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function DashboardPage() {
+  // إنشاء العميل داخل الدالة
+  const supabase = await createClient();
+
+  // جلب المستخدم
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  // التوجيه للمسار الخاص بك إذا لم يجد مستخدم
+  if (error || !user) {
+    redirect('/same-2090');
+  }
+
   const stats = [
     { title: 'إجمالي المبيعات', value: '45,200,000 ج.م', icon: DollarSign, color: 'bg-blue-500' },
     { title: 'الوحدات المتاحة', value: '128', icon: Home, color: 'bg-[#10B981]' },
@@ -11,61 +27,37 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
+    <div className="flex min-h-screen bg-[#F8FAFC]" dir="rtl">
       <Sidebar role="ADMIN" />
       
       <main className="mr-72 flex-1 p-10">
         <header className="flex justify-between items-center mb-12">
-          <div>
+          <div className="text-right">
             <h1 className="text-3xl font-bold text-[#0F172A]">نظرة عامة</h1>
-            <p className="text-gray-500 mt-1">مرحباً بك، سيد سليمان. إليك آخر مستجدات العمل اليوم.</p>
+            <p className="text-gray-500 mt-1">مرحباً بك، سيد سليمان.</p>
           </div>
+          
           <div className="flex items-center gap-4">
-            <div className="text-left">
-              <p className="text-sm font-bold text-[#0F172A]">سليمان العزومي</p>
+            <div className="text-right">
+              <p className="text-sm font-bold text-[#0F172A]">{user.email?.split('@')[0]}</p>
               <p className="text-xs text-[#10B981]">المدير التنفيذي</p>
             </div>
             <div className="w-12 h-12 bg-gray-200 rounded-2xl overflow-hidden">
-               <img src="https://ui-avatars.com/api/?name=Soliman&background=10B981&color=fff" alt="User" />
+               <img src={`https://ui-avatars.com/api/?name=${user.email}&background=10B981&color=fff`} alt="User" />
             </div>
           </div>
         </header>
 
-        {/* إحصائيات سريعة */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((s, i) => (
-            <div key={i} className="bg-white p-7 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className={`${s.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-gray-100`}>
+            <div key={i} className="bg-white p-7 rounded-[2rem] shadow-sm border border-gray-100">
+              <div className={`${s.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6`}>
                 <s.icon size={24} />
               </div>
               <p className="text-gray-400 text-sm font-medium">{s.title}</p>
               <h3 className="text-2xl font-bold text-[#0F172A] mt-1">{s.value}</h3>
             </div>
           ))}
-        </div>
-
-        {/* الوحدات الأخيرة المضافة */}
-        <div className="mt-12 bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
-          <h2 className="text-xl font-bold mb-8 text-[#0F172A]">أحدث الوحدات في السوق</h2>
-          <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gray-100 rounded-xl overflow-hidden">
-                    <img src={`https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=100`} alt="prop" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#0F172A]">بنتهاوس زايد الجديدة</p>
-                    <p className="text-xs text-gray-400">منذ ساعتين • بواسطة محمد (سكرتارية)</p>
-                  </div>
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-[#10B981]">8,200,000 ج.م</p>
-                  <p className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full inline-block mt-1">نشط</p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </main>
     </div>
