@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Sidebar from '@/components/Sidebar';
 // تم استيراد السيرفر كلاينت هنا
-import { createClient } from '@/lib/supabase/client'; 
+import { createClient } from '@/lib/supabase/server'; 
 import { 
   Building2, MapPin, ImageIcon, 
   Loader2, Save, AlignRight, 
