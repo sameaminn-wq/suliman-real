@@ -2,7 +2,7 @@
   "name": "suliman-real-desktop",
   "version": "1.0.0",
   "private": true,
-  "main": "main.js", 
+  "main": "main.js",
   "description": "نظام سليمان لإدارة العقارات - النسخة الهجينة",
   "scripts": {
     "dev": "next dev",
@@ -35,7 +35,7 @@
     "typescript": "5.2.2"
   },
   "devDependencies": {
-    "prisma": "^6.19.3",
-    "electron": "^41.5.1"
+    "electron": "^41.5.1",
+    "prisma": "^6.19.3"
   }
 }

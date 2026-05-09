@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
 
@@ -14,8 +14,11 @@ model LocalProperty {
   location    String
   price       Float
   rooms       Int      @default(0)
+  bathrooms   Int      @default(0)  // أضفنا هذا
   area        Float    @default(0)
   image_url   String?
+  description String?               // أضفنا هذا لحل المشكلة السابقة
+  type        String?  @default("وحدة سكنية") // أضفنا هذا
   isSynced    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

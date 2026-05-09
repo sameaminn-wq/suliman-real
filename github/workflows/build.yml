@@ -1,0 +1,33 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches:
+      - main # سيبدأ البناء كلما رفعت كود لفرع main
+
+jobs:
+  release:
+    runs-on: windows-latest # هنا نطلب من جيت هوب تشغيل سيرفر ويندوز
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Next.js
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Build Electron App
+        run: npm run dist # هذا الأمر الذي وضعناه في package.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
