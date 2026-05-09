@@ -69,7 +69,7 @@ export default function Dashboard() {
           {stats.map((s, i) => (
             <div key={i} className="bg-white p-5 md:p-7 rounded-[1.5rem] md:rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-all group">
               <div className={`${s.color} w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center text-white mb-4 md:mb-6 shadow-lg shadow-gray-100 group-hover:scale-110 transition-transform`}>
-                <s.icon size={20} md:size={24} />
+              <s.icon size={24} className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               <p className="text-gray-400 text-xs md:text-sm font-medium">{s.title}</p>
               <h3 className="text-xl md:text-2xl font-bold text-[#0F172A] mt-1 break-words">{s.value}</h3>
