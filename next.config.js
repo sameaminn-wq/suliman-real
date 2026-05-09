@@ -1,13 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // تفعيل Server Actions
+  // ملاحظة: في النسخ الأحدث، Server Actions مفعلة تلقائياً
+  // إذا كانت نسختك تدعمها كخيار تجريبي، نتركها هكذا لكن بدون boolean إذا لزم الأمر
   experimental: {
-    serverActions: true,
+    // تم تركها كما هي، وإذا استمر الخطأ يفضل إزالة هذا القسم بالكامل
+    serverActions: true, 
   },
 
-  // إعدادات الصور المحسنة لبيئة StackBlitz
   images: {
-    unoptimized: true, // أضفت هذا السطر لحل مشكلة الـ 404 التي ظهرت لك
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: 'https',
@@ -16,9 +17,8 @@ const nextConfig = {
     ],
   },
 
-  // تحسينات الاستقرار
-  reactStrictMode: false, // تعطيله يقلل الضغط على الذاكرة في المتصwفح
-  swcMinify: true,
+  reactStrictMode: false,
+  // تم إزالة swcMinify لأنه مفعل تلقائياً وتسبب في تحذير سابق
 };
 
 module.exports = nextConfig;
