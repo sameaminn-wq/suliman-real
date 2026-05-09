@@ -3,21 +3,22 @@ name: Build Windows EXE
 on:
   push:
     branches:
-      - main # سيبدأ البناء كلما رفعت كود لفرع main
-      - test-features
+      - main
+      - test-features # يسمح بالبناء من الفرع التجريبي أيضاً
 
 jobs:
   release:
-    runs-on: windows-latest # هنا نطلب من جيت هوب تشغيل سيرفر ويندوز
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm install
@@ -29,6 +30,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Build Electron App
-        run: npm run dist # هذا الأمر الذي وضعناه في package.json
+        run: npm run dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload EXE Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Suliman-Real-Estate-App
+          path: dist/*.exe # سيتم رفع ملف الـ EXE هنا لتتمكن من تحميله
