@@ -10,7 +10,18 @@
     "start": "next start",
     "lint": "next lint",
     "electron": "electron .",
-    "dist": "next build && electron-builder"
+    "dist": "next build && npx electron-builder"
+  },
+  "build": {
+    "appId": "com.suliman.realestate",
+    "productName": "Suliman Real Estate",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "public/icon.ico"
+    }
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -35,7 +46,8 @@
     "typescript": "5.2.2"
   },
   "devDependencies": {
-    "electron": "^41.5.1",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
     "prisma": "^6.19.3"
   }
 }

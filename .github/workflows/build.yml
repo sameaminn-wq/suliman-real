@@ -23,7 +23,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # الخطوة الجديدة والمهمة جداً هنا 👇
       - name: Generate Prisma Client
         run: npx prisma generate
 
@@ -34,7 +33,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Build Electron App
-        run: npm run dist
+        run: npx electron-builder build --windows --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
