@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model LocalProperty {
+  id          String   @id @default(uuid())
+  title       String
+  location    String
+  price       Float
+  rooms       Int      @default(0)
+  area        Float    @default(0)
+  image_url   String?
+  isSynced    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

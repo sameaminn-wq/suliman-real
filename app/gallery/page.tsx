@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+// استيراد المحرك الهجين الجديد بدلاً من سوبابيز المباشر
+import { getProperties } from '@/lib/db'; 
 import { Home, MapPin, Maximize, BedDouble, Bath, Search } from 'lucide-react';
 
 export default function GalleryPage() {
@@ -10,14 +11,21 @@ export default function GalleryPage() {
 
   useEffect(() => {
     const fetchProperties = async () => {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (!error) setProperties(data);
-      setLoading(false);
+      try {
+        setLoading(true);
+        // هنا السحر: سيحاول الجلب من SQLite أولاً ثم المزامنة مع سوبابيز
+        const data = await getProperties();
+        
+        if (data) {
+          setProperties(data);
+        }
+      } catch (error) {
+        console.error("خطأ في تحميل البيانات الهجينة:", error);
+      } finally {
+        setLoading(false);
+      }
     };
+    
     fetchProperties();
   }, []);
 
@@ -33,12 +41,14 @@ export default function GalleryPage() {
 
       <div className="max-w-7xl mx-auto px-6 mt-12">
         {loading ? (
-          <div className="text-center py-20 text-[#10B981] font-bold animate-pulse">جاري تحميل الوحدات...</div>
+          <div className="text-center py-20 text-[#10B981] font-bold animate-pulse">
+            جاري تحميل الوحدات من المخزن المحلي والسحابي...
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {properties.map((prop) => (
               <div key={prop.id} className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
-                {/* Image Placeholder or Real Image */}
+                {/* Image Section */}
                 <div className="relative h-64 bg-gray-200">
                   <img 
                     src={prop.image_url || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=2070&auto=format&fit=crop'} 
@@ -46,8 +56,14 @@ export default function GalleryPage() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-4 right-4 bg-[#10B981] text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
-                    {prop.type}
+                    {prop.type || 'عقار'}
                   </div>
+                  {/* علامة توضح إذا كان العقار محفوظ محلياً فقط أم تمت مزامنته */}
+                  {prop.isSynced === false && (
+                    <div className="absolute bottom-4 left-4 bg-orange-500 text-white px-2 py-1 rounded text-[10px] font-bold">
+                      بانتظار المزامنة...
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-6">
@@ -70,7 +86,7 @@ export default function GalleryPage() {
                     </div>
                     <div className="flex flex-col items-center gap-1 text-gray-500 border-x border-gray-50">
                       <Bath size={18} className="text-[#10B981]" />
-                      <span className="text-xs font-bold">{prop.bathrooms} حمام</span>
+                      <span className="text-xs font-bold">{prop.bathrooms || 0} حمام</span>
                     </div>
                     <div className="flex flex-col items-center gap-1 text-gray-500">
                       <Maximize size={18} className="text-[#10B981]" />
