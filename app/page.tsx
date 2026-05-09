@@ -57,7 +57,7 @@ export default function LandingPage() {
       {/* 3. لماذا نحن؟ */}
       <section className="py-32 px-10 max-w-7xl mx-auto">
         <div className="text-center mb-20">
-          <h2 className="text-4xl font-bold text-[#0F172A] mb-4">لماذا يختار المستثمرون "سليمان"؟</h2>
+          <h2 className="text-4xl font-bold text-[#0F172A] mb-4">لماذا يختار المستثمرون «سليمان»؟</h2>
           <p className="text-gray-500">نحن نضع معايير جديدة للاحترافية في السوق المصري</p>
         </div>
 
