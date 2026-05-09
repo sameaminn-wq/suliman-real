@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main # سيبدأ البناء كلما رفعت كود لفرع main
+      - test-features
 
 jobs:
   release:
